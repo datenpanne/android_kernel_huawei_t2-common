@@ -1,0 +1,33 @@
+/* Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "../federer/huawei.dtsi"
+
+/ {
+    huawei_fac_info {
+        compatible = "huawei,hw_fac_info";
+        fac,product_name = "HUAWEI FDR-A04L";
+        fac,hardware_ver = "SH1FDRA04LM_VERA";
+        fac,software_ver = "MSM8939_FDR_A04L_VA";
+        status = "ok";
+    };
+
+    qcom,hw-camera-board-id {
+        compatible = "qcom,hw-camera-board-id";
+        qcom,product-name = "msm8939_T2-A04L";
+    };
+
+	huawei_sensor_info {
+		compatible = "huawei,hw_sensor_info";
+		product_name = "msm8939_T2-A04L";
+	};
+};

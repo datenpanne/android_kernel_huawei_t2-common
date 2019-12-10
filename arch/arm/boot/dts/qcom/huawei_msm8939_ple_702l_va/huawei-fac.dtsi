@@ -1,0 +1,9 @@
+ / {
+        huawei_fac_info {
+                  compatible = "huawei,hw_fac_info";
+                  fac,product_name = "HUAWEI PLE-702L";
+                  fac,hardware_ver = "SH1PLE702LM";
+                  fac,software_ver = "MSM8939_PLE_702L_VA";
+                  status = "ok";
+        };
+};

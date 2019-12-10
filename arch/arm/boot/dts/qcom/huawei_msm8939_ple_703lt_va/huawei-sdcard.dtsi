@@ -1,0 +1,47 @@
+/* < DTS2015071605523 guotiecheng 20150716 begin */
+&soc {
+        huawei,huawei-gpio-info {
+                compatible = "huawei-gpio-info";
+                /* < DTS2015112503670 lvxinkai 20151125 begin */
+                huawei,voltage-active-high;
+                /* < DTS2015112503670 lvxinkai 20151125 end */
+        };
+     };
+/* DTS2014111105643 luchao 20141111 end > */
+/* < DTS2014121206768 luchao 20141212 begin */
+/* < DTS2015020306974 luchao 20150203 begin */
+/* < DTS2015080703018 lvxinkai 20150807 begin */
+/* < DTS2016010607671 lvxinkai 20160301 begin */
+&sdhc_2 {
+	interrupt-map = <0 &intc 0 125 0
+		1 &intc 0 221 0
+		2 &msm_gpio 38 0>;
+	cd-gpios = <&msm_gpio 38 0x0>;
+	/delete-property/ qcom,vdd-always-on;
+	/delete-property/ qcom,vdd-io-always-on;
+	huawei,support-uhs;
+};
+/* < DTS2016010607671 lvxinkai 20160301 end */
+/* < DTS2015080703018 lvxinkai 20150807 end */
+/* DTS2015020306974 luchao 20150203 end > */
+/* DTS2014121206768 luchao 20141212 end > */
+/* < DTS2015010408131 luchao 20150104 begin */
+&tlmm_pinmux {
+	sdhc2_cd_pin {
+		qcom,pins = <&gp 38>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "cd-gpio";
+		sdc2_cd_on: cd_on {
+			drive-strength = <2>;
+            /* < DTS2015112503670 lvxinkai 20151125 begin */
+            bias-disable;       /* NO PULL */
+            /* < DTS2015112503670 lvxinkai 20151125 end */
+		};
+		sdc2_cd_off: cd_off {
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
+};
+/* DTS2015071605523 guotiecheng 20150716 end >*/

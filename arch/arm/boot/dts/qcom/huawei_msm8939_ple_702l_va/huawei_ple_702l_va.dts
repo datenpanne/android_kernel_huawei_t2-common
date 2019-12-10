@@ -1,0 +1,82 @@
+/* < DTS2015112007164 lwx247446 20151120 begin */
+/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+/dts-v1/;
+#include "msm8939-v3.0.dtsi"
+#include "msm8939-qrd-skuk.dtsi"
+#include "huawei_msm8939_ple_702l_va/huawei.dtsi"
+/ {
+	model = "Qualcomm MSM 8939 HUAWEI PLE-702L";
+	compatible = "qcom,msm8939-qrd-skuk", "qcom,msm8939", "qcom,qrd";
+	qcom,board-id = <8129 0> , <8129 4>;
+	huawei,modem_id = <0xFF84009D 0x0>;
+};
+/* < DTS2015081903221 luozhiming 20150814 begin */
+/* < DTS2015112101559 feishilin 20151121 begin */
+&soc {
+	mdss_dsi0: qcom,mdss_dsi@1a98000 {
+	/delete-property/ qcom,gpio-cs0;
+	/delete-property/ qcom,gpio-clk;
+	/delete-property/ ti,en-gpio;
+       qcom,platform-vsn-gpio102 = <&msm_gpio 32 0>;
+       qcom,platform-vsp-gpio100 = <&msm_gpio 97 0>;
+       qcom,platform-reset-gpio32 = <&msm_gpio 25 0>;
+       qcom,platform-vled-gpio97 = <&msm_gpio 109 0>;
+       qcom,platform-bl-gpio109 = <&msm_gpio 3 0>;
+       qcom,platform-vcc-gpio2 = <&msm_gpio 2 0>;
+	};
+
+	/* Since blue led gpio is specified to GPIO 10 in msm8939-qrd-skuk.dtsi and PELE owns no blue led, so re-assign it to a unused GPIO here. */
+	gpio-leds {
+		blue {
+			gpios = <&msm_gpio 1 0>;
+		};
+	};
+};
+/*  DTS2015112101559 feishilin 20151121 end >*/
+/* < DTS2015081903221 luozhiming 20150814 end */
+
+&tlmm_pinmux {
+	tps65132-en-pin {
+		status = "disabled";
+	};
+};
+
+&i2c_0 {
+	tps65132@3e {
+		status = "disabled";
+	};
+};
+
+&mdss_dsi0 {
+	vsp-supply;
+	vsn-supply;
+	qcom,panel-supply-entries {
+		qcom,panel-supply-entry@3 {
+			qcom,supply-name;
+		};
+		qcom,panel-supply-entry@4 {
+			qcom,supply-name;
+		};
+	};
+};
+/* < DTS2015112101477 lwx247446 20151121 begin */
+/* Disable BLSP1_SPI(GPIO 1,2,3,4) since these gpios are used for other purpose */
+&spi_1 {
+	status = "disabled";
+};
+/* Disable BLSP1_I2C (GPIO 2,3) since these gpios are used for other purpose */
+&i2c_1 {
+	status = "disabled";
+};
+/* DTS2015112101477 lwx247446 20151121 end > */
+/* DTS2015112007164 lwx247446 20151120 end > */

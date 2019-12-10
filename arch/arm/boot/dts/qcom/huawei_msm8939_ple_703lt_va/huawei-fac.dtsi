@@ -1,0 +1,9 @@
+ / {
+        huawei_fac_info {
+                  compatible = "huawei,hw_fac_info";
+                  fac,product_name = "HUAWEI PLE-703LT";
+                  fac,hardware_ver = "SH1PLE703LTM";
+                  fac,software_ver = "MSM8939_PLE_703LT_VA";
+                  status = "ok";
+        };
+};

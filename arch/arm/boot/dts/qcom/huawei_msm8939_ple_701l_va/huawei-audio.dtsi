@@ -1,0 +1,39 @@
+/* < DTS2015071605523 guotiecheng 20150716 begin */
+/ {
+    huawei_audio_info {
+        compatible = "huawei,hw_audio_info";
+        product-identifier = "pele";
+        builtin-master-mic-exist;
+        builtin-2nd-mic-exist;
+        hand_held_dual_mic_endfire_strategy;
+        status = "ok";
+        loud_speaker_master_mic_strategy;
+        product-btsco-nrec-adapt;
+    };
+};
+/* < DTS2015112509645 y00188172 20151125 begin */
+&soc {
+    sound {
+            /delete-property/ qcom,msm-micbias1-ext-cap;
+            qcom,msm-hs-micbias-type = "internal";
+            qcom,audio-routing =
+				"RX_BIAS", "MCLK",
+				"SPK_RX_BIAS", "MCLK",
+				"INT_LDO_H", "MCLK",
+				"MIC BIAS Internal1", "Handset Mic",
+				"MIC BIAS Internal2", "Headset Mic",
+				"MIC BIAS Internal3", "Secondary Mic",
+				"AMIC1", "MIC BIAS Internal1",
+				"AMIC2", "MIC BIAS Internal2",
+				"AMIC3", "MIC BIAS Internal3";
+    };
+};
+/* DTS2015112509645 y00188172 20151125 end > */
+&spmi_bus {
+        qcom,pm8916@1 {
+                pm8916_tombak_dig: msm8x16_wcd_codec@f000{
+                        qcom,cdc-boost-voltage = <5000>;
+                };
+        };
+};
+/* DTS2015071605523 guotiecheng 20150716 end >*/

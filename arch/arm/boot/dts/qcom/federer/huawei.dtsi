@@ -1,0 +1,99 @@
+#include "huawei-lcd.dtsi"
+#include "huawei-tp.dtsi"
+#include "huawei-camera.dtsi"
+#include "huawei-sensors.dtsi"
+#include "huawei-vibrator.dtsi"
+#include "huawei-audio.dtsi"
+#include "huawei-battery.dtsi"
+#include "huawei-sdcard.dtsi"
+#include "huawei-usb.dtsi"
+#include "huawei-gpio.dtsi"
+
+/ {
+	memory {
+		pstore_reserve_mem: pstore_reserve_region@0 {
+			linux,reserve-contiguous-region;
+			linux,reserve-region;
+			linux,remove-completely;
+			reg = <0x0 0x8c400000 0x0 0x00100000>;
+			label = "pstore_reserve_mem";
+		};
+	};
+};
+
+/*Rename GPIO*/
+&soc {
+        mdss_dsi0: qcom,mdss_dsi@1a98000 {
+        huawei,platform-enable-vled = <&msm_gpio 97 0>;
+        huawei,platform-power-blk = <&msm_gpio 109 0>;
+        huawei,platform-power-panel = <&msm_gpio 32 0>;
+	};
+
+	ramoops {
+		compatible = "ramoops";
+		status = "ok";
+
+		/* This is tacked at the end of pheripheral_region@0 */
+		android,ramoops-buffer-start = <0x8c400000>;
+		android,ramoops-buffer-size = <0x100000>;
+		android,ramoops-console-size = <0x80000>;
+		android,ramoops-record-size = <0x20000>;
+		android,ramoops-dump-oops = <0x1>;
+	};
+
+	qcom,ipc_router_modem_xprt {
+		/delete-property/ qcom,disable-pil-loading;
+	};
+
+	qcom,smem@86300000 {
+		qcom,smd-modem {
+			/delete-property/ qcom,not-loadable;
+		};
+
+	/delete-node/ cdc-ext-spk-pa;
+	/delete-node/ regulator_spk;
+	/delete-node/ qcom,leds@a100;
+    /* Delete for now display  */
+	/delete-node/ ddic_rst_active;
+	/delete-node/ ddic_rst_suspend;
+	/delete-node/ mod_en_active;
+	/delete-node/ mod_en_suspend;
+	};
+};
+
+/**************Federer(T2 10) BLSP Configuration Table*******************/
+/*	Device_Tree_Node	GPIO	BLSP		Used	Usage	*/
+/*	i2c_0			6,7	    BLSP2_I2C   Yes         Sensor	*/
+/*	i2c_1			2,3	    BLSP1_I2C   No          N/A	*/
+/*	i2c_4			14,15	BLSP4_I2C	Yes         Battery	*/
+/*	i2c_5			18,19	BLSP5_I2C	Yes         TP	*/
+/*	i2c_6			22,23	BLSP6_I2C	No          N/A	*/
+/*	spi_1			1,2,3,4	BLSP1_SPI	No          N/A	*/
+/*	spi_5			16~19	BLSP5_SPI	No          N/A	*/
+/*	spi_6			20~23	BLSP6_SPI	No          N/A	*/
+/************************************************************************/
+
+&tlmm_pinmux {
+	tps65132-en-pin {
+		status = "disabled";
+	};
+};
+
+&i2c_0 {
+	tps65132@3e {
+		status = "disabled";
+	};
+};
+
+&mdss_dsi0 {
+	vsp-supply;
+	vsn-supply;
+	qcom,panel-supply-entries {
+		qcom,panel-supply-entry@3 {
+			qcom,supply-name;
+		};
+		qcom,panel-supply-entry@4 {
+			qcom,supply-name;
+		};
+	};
+};

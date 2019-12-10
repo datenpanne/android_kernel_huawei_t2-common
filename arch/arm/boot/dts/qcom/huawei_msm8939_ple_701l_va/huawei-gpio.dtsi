@@ -1,0 +1,22 @@
+/* < DTS2015112101477 lwx247446 20151121 begin */
+/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&soc {
+nc_gpio {
+    compatible = "qcom,sleep_gpio";
+    ngpio = <11>;
+    gpio = <1 45 46 81 94 95 100 101 102 105 106>;
+    status = "okay";
+    };
+};
+/* DTS2015112101477 lwx247446 20151121 end >*/

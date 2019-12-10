@@ -1,0 +1,9 @@
+ / {
+        huawei_fac_info {
+                  compatible = "huawei,hw_fac_info";
+                  fac,product_name = "HUAWEI PLE-701W";
+                  fac,hardware_ver = "SH1PLE701WM";
+                  fac,software_ver = "MSM8939_PLE_701W_VA";
+                  status = "ok";
+        };
+};

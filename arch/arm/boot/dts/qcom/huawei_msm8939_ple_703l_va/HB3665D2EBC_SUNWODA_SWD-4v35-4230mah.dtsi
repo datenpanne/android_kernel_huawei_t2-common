@@ -1,0 +1,139 @@
+/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+qcom,sunwoda-4v35-4230mAh-swd-data {
+	qcom,fcc-mah = <4230>;
+	qcom,default-rbatt-mohm = <91>;
+	qcom,rbatt-capacitive-mohm = <50>;
+	qcom,flat-ocv-threshold-uv = <3800000>;
+	qcom,max-voltage-uv = <4350000>;
+	/* <DTS2014101405060 caiwei 20141014 begin */
+	qcom,v-cutoff-uv = <3300000>;
+	/* DTS2014101405060 caiwei 20141014 end> */
+	qcom,chg-term-ua = <150000>;
+	qcom,batt-id-kohm = <110>;
+	qcom,battery-type = "HB3665D2EBC_SUNWODA_SWD";
+
+	/* < DTS2013120201997 liyuping 20131204 begin */
+	qcom,warm-bat-decidegc = <420>;
+	qcom,warm-bat-mv = <4100>;
+	qcom,ibatmax-warm-ma = <700>;
+
+	qcom,cool-bat-decidegc = <100>;
+	qcom,cool-bat-mv = <4350>;
+	qcom,ibatmax-cool-ma = <1280>;
+
+	qcom,hot-bat-decidegc = <520>;
+	qcom,cold-bat-decidegc = <0>;
+	/* DTS2013120201997 liyuping 20131204 end >*/
+	/* <DTS2014101405060 caiwei 20141014 begin */
+	qcom,ibat-acc-lut {
+	    qcom,lut-col-legend = <(-20) 0 25>;
+		qcom,lut-row-legend = <0 500 800 1000 1500 2000>;
+		qcom,lut-data = <4140 4182 4182>,
+		                <61 4080 4148>,
+						<158 3880 4132>,
+						<130 3652 4118>,
+						<34 2920 4077>,
+						<4 2087 4017>;
+	};
+    /* DTS2014101405060 caiwei 20141014 end> */
+	qcom,rbatt-sf-lut {
+		qcom,lut-col-legend = <(-20) 0 25 40 60>;
+		qcom,lut-row-legend = 
+		    <100 95 90 85 80>,
+				<75 70 65 60 55>,
+				<50 45 40 35 30>,
+				<25 20 16 13 11>,
+				<10 9 8 7 6>,
+				<5 4 3 2 1>;
+		qcom,lut-data =
+				<1560 367 99 78 70>,
+				<1560 367 99 78 70>,
+				<1525 365 125 80 71>,
+				<1459 366 129 81 74>,
+				<1423 371 110 85 75>,
+				<1405 369 112 87 77>,
+				<1409 363 138 90 79>,
+				<1421 360 126 96 80>,
+				<1442 359 131 96 81>,
+				<1467 360 126 82 74>,
+				<1493 367 105 80 71>,
+				<1521 379 123 81 74>,
+				<1557 392 111 82 75>,
+				<1601 413 125 84 74>,
+				<1654 435 114 82 74>,
+				<1722 465 125 84 71>,
+				<1898 505 135 84 71>,
+				<2174 549 122 84 71>,
+				<2481 593 114 84 74>,
+				<2799 626 120 86 76>,
+				<2962 644 125 88 77>,
+				<3110 666 130 90 77>,
+				<3233 667 134 92 77>,
+				<3352 677 137 93 77>,
+				<3665 700 143 91 76>,
+				<4070 721 153 91 76>,
+				<4609 745 166 92 77>,
+				<5352 779 170 96 78>,
+				<6487 829 176 103 82>,
+				<8595 1044 290 178 134>;
+	};
+
+	qcom,fcc-temp-lut {
+		qcom,lut-col-legend = <(-20) 0 25 40 60>;
+		qcom,lut-data = <4230 4250 4282 4281 4255>;
+	};
+
+	qcom,pc-temp-ocv-lut {
+		qcom,lut-col-legend = <(-20) 0 25 40 60>;
+		qcom,lut-row-legend =
+                <100 95 90 85 80>,
+				<75 70 65 60 55>,
+				<50 45 40 35 30>,
+				<25 20 16 13 11>,
+				<10 9 8 7 6>,
+				<5 4 3 2 1>,
+				<0>;
+		qcom,lut-data = 
+				<4316 4315 4315 4313 4310>,
+				<4218 4248 4262 4260 4251>,
+				<4138 4186 4207 4204 4196>,
+				<4055 4130 4153 4151 4144>,
+				<3990 4080 4102 4100 4094>,
+				<3935 4020 4054 4051 4046>,
+				<3892 3966 4005 4006 4002>,
+				<3860 3920 3963 3965 3962>,
+				<3832 3882 3912 3919 3919>,
+				<3808 3848 3870 3872 3872>,
+				<3784 3821 3840 3841 3840>,
+				<3762 3799 3816 3818 3816>,
+				<3740 3782 3796 3797 3796>,
+				<3716 3766 3778 3779 3778>,
+				<3690 3751 3764 3762 3756>,
+				<3662 3734 3750 3745 3733>,
+				<3628 3712 3727 3722 3708>,
+				<3598 3692 3698 3692 3682>,
+				<3574 3673 3682 3676 3665>,
+				<3554 3659 3678 3673 3663>,
+				<3544 3652 3676 3671 3662>,
+				<3533 3645 3673 3670 3660>,
+				<3522 3635 3669 3666 3656>,
+				<3508 3622 3659 3657 3646>,
+				<3490 3600 3637 3635 3620>,
+				<3466 3570 3598 3596 3578>,
+				<3434 3526 3544 3541 3524>,
+				<3388 3465 3470 3468 3452>,
+				<3322 3380 3368 3368 3354>,
+				<3214 3246 3216 3220 3213>,
+				<3000 3000 3000 3000 3000>;
+	};
+};

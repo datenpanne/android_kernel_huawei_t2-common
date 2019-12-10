@@ -1,0 +1,18 @@
+
+/* < DTS2015071605523 guotiecheng 20150716 begin */
+/* < DTS2015071100406 hwx239867 20150724 begin */
+/* < DTS2015112705657 swx234330 20151127 begin */
+/* < DTS2016011103813 swx234330 20151127 Disable softap wps Begin */
+ / {
+        huawei_wifi_info {
+                  compatible = "huawei,hw_wifi_info";
+                  status = "ok";
+                  wifi,chiptype = "2.3";
+                  wifi,pubfile_id = "ple_701l_va";
+                  wifi,fw_ver = "QCOM_WCN3620_2.0.1";
+        };
+};
+/* < DTS2016011103813 swx234330 20151127 Disable softap wps End */
+/* DTS2015112705657 swx234330 20151127 end > */
+/* DTS2015071100406 hwx239867 20150724 end */
+/* DTS2015071605523 guotiecheng 20150716 end >*/
