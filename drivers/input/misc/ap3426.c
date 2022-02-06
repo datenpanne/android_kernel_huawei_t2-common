@@ -1402,7 +1402,6 @@ static int ap3426_cdev_als_flush(struct sensors_classdev *sensors_cdev)
 	return 0;
 }
 
-#ifndef CONFIG_HUAWEI_KERNEL
 static inline void swap_at(u16 *x, u16 *y)
 {
 	u16 temp = *x;
@@ -1437,7 +1436,6 @@ static u16 ap3426_median_average(u16 *sample_data, int size)
 
 	return average;
 }
-#endif
 
 /* This function should be called when sensor is disabled */
 static int ap3426_cdev_ps_calibrate(struct sensors_classdev *sensors_cdev,
@@ -1447,18 +1445,10 @@ static int ap3426_cdev_ps_calibrate(struct sensors_classdev *sensors_cdev,
 	int power;
 	unsigned int config;
 	unsigned int interrupt;
-#ifdef CONFIG_HUAWEI_KERNEL
-	u16 min = PS_DATA_MASK;
-#else
 	u16 avg = 0;
 	u16 data[AP3426_CALIBRATE_SAMPLES];
-#endif
 	u8 ps_data[2];
-#ifdef CONFIG_HUAWEI_KERNEL
-	int count = AP3426_CALIBRATE_SAMPLES;
-#else
 	int count = AP3426_CALIBRATE_SAMPLES + 1;
-#endif	
 	struct ap3426_data *di = container_of(sensors_cdev,
 			struct ap3426_data, ps_cdev);
 
@@ -1551,37 +1541,20 @@ static int ap3426_cdev_ps_calibrate(struct sensors_classdev *sensors_cdev,
 			dev_err(&di->i2c->dev, "read PS data failed\n");
 			break;
 		}
-#ifdef CONFIG_HUAWEI_KERNEL
-		if (min > ((ps_data[1] << 8) | ps_data[0]))
-			min = (ps_data[1] << 8) | ps_data[0];
-#else
 		data[count - 1] = (ps_data[1] << 8) | ps_data[0];
-#endif
 	}
-#ifndef CONFIG_HUAWEI_KERNEL
 	avg = ap3426_median_average(data, AP3426_CALIBRATE_SAMPLES);
 	dev_dbg(&di->i2c->dev, "calibrated average %d\n", avg);
-#endif
 	if (!count) {
-#ifdef CONFIG_HUAWEI_KERNEL
-		if (min > (PS_DATA_MASK >> 1)) {
-			dev_err(&di->i2c->dev, "%s,line %d:ps data out of range, check if shield\n",__func__,__LINE__);
-#else
 		if (avg > (PS_DATA_MASK >> 1)) {
 			dev_err(&di->i2c->dev, "ps data out of range, check if shield\n");
-#endif
 			rc = -EINVAL;
 			goto exit_disable_ps;
 		}
 
 		if (apply_now) {
-#ifdef CONFIG_HUAWEI_KERNEL
-			ps_data[0] = PS_LOW_BYTE(min);
-			ps_data[1] = PS_HIGH_BYTE(min);
-#else
 			ps_data[0] = PS_LOW_BYTE(avg);
 			ps_data[1] = PS_HIGH_BYTE(avg);
-#endif
 			rc = regmap_bulk_write(di->regmap, AP3426_REG_PS_CAL_L,
 					ps_data, 2);
 			if (rc) {
@@ -1589,19 +1562,11 @@ static int ap3426_cdev_ps_calibrate(struct sensors_classdev *sensors_cdev,
 						AP3426_REG_PS_CAL_L, rc);
 				goto exit_disable_ps;
 			}
-#ifdef CONFIG_HUAWEI_KERNEL
-			di->bias = min;
-#else
 			di->bias = avg;
-#endif
 		}
-#ifdef CONFIG_HUAWEI_KERNEL
-		snprintf(di->calibrate_buf, sizeof(di->calibrate_buf), "0,0,%d",
-				min);
-#else
+
 		snprintf(di->calibrate_buf, sizeof(di->calibrate_buf), "0,0,%d",
 				avg);
-#endif
 		dev_dbg(&di->i2c->dev, "result: %s\n", di->calibrate_buf);
 	} else {
 		dev_err(&di->i2c->dev, "calibration failed\n");

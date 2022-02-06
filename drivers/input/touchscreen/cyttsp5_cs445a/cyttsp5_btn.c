@@ -1,3 +1,4 @@
+/* add log */
 /*
  * cyttsp5_btn.c
  * Cypress TrueTouch(TM) Standard Product V5 CapSense Reports Module.

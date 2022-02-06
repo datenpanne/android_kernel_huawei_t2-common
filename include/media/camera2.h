@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -19,6 +19,7 @@
 #include <linux/of_platform.h>
 #include <linux/of_device.h>
 #include <linux/of.h>
+#define MAX_SPECIAL_SUPPORT_SIZE 10
 
 enum msm_camera_device_type_t {
 	MSM_CAMERA_I2C_DEVICE,
@@ -43,14 +44,18 @@ enum msm_bus_perf_setting {
 struct msm_camera_slave_info {
 	uint16_t sensor_slave_addr;
 	uint16_t sensor_id_reg_addr;
-    enum msm_camera_i2c_data_type sensor_id_data_type;
+#ifdef CONFIG_HUAWEI_KERNEL
+	enum msm_camera_i2c_data_type sensor_id_data_type;
+#endif
 	uint16_t sensor_id;
+#ifdef CONFIG_HUAWEI_KERNEL
 	uint8_t mcam_id;
 	uint32_t otp_vendor_id;
-	
+
 	struct dump_reg_info_t *dump_reg_info;
 	uint16_t dump_reg_num;
 	struct msm_cam_otp_vendor_info_t *otp_vendor_info;
+#endif
 };
 
 struct msm_cam_clk_info {
@@ -100,6 +105,10 @@ struct msm_camera_sensor_board_info {
 	const char *eeprom_name;
 	const char *actuator_name;
 	const char *ois_name;
+#ifndef CONFIG_HUAWEI_KERNEL
+	const char *special_support_sensors[MAX_SPECIAL_SUPPORT_SIZE];
+	int32_t special_support_size ;
+#endif
 	struct msm_camera_slave_info *slave_info;
 	struct msm_camera_csi_lane_params *csi_lane_params;
 	struct msm_camera_sensor_strobe_flash_data *strobe_flash_data;

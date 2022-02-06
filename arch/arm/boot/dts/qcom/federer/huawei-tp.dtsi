@@ -49,49 +49,23 @@
 				cy,name = "cyttsp5_core";
 				cy,product_name = "T2A";
 				cy,chip_name = "CS448";
+
 				cy,irq-gpio = <&msm_gpio 13 0x2008>;
 				cy,reset-gpio = <&msm_gpio 12 0x0>;
-				cy,vdd-type = <0>;	/* 0:null, 1:gpio, 2:pmu*/
+				cy,vdd-type = <1>;	/* 0:null, 1:gpio, 2:pmu*/
 				cy,vbus-type = <2>;	/* 0:null, 1:gpio, 2:pmu*/
-				cy,vdd = "vdd";
+				cy,vbus-value = <1850000>;
+
+				/*cy,vdd = "vdd";*/
+				cy,vdd-en-gpio = <&msm_gpio 112 0x0>;
 				cy,vbus = "vcc_i2c";
 				/*cy,fw_upgrade_start_ver = <4>;*/
 				cy,hid_desc_register = <1>;
 				/* CY_CORE_FLAG_WAKE_ON_GESTURE | CY_CORE_FLAG_RESTORE_PARAMETERS */
-				cy,flags = <5>;
+				cy,flags = <0>;
 				/* CY_CORE_EWG_NONE */
-				/* Gestures that supported:                           */
-				/* bit0  Double tap                                        */
-				/* bit1  Single finger slide from left to right     */
-				/* bit2  Single finger slide from right to left     */
-				/* bit3  Single finger slide from top to bottom  */
-				/* bit4  Single finger slide from bottom to top  */
-				/* bit5  Double finger slide from top to bottom--disable for holster*/
-				/* bit6  Single finger slide circle                     */
-				/* bit7  Single finger write letter c                  */
-				/* bit8  Single finger write letter e                  */
-				/* bit9  Single finger write letter m                 */
-				/* bit10 Single finger write letter w                 */
-				/* bit11 Palm off screen                                */
-				cy,easy_wakeup_supported_gestures = <0xF81>;
 
-				/*Defination of report key value  for different gestures*/
-				cy,easy_wakeup_gesture_keys =
-				<	59 /*0.Double tap:KEY_F1*/
-					60 /*1.Single finger slide from left to right*/
-					61 /*2.Single finger slide from right to left:KEY_F3*/
-					62 /*3.Single finger slide from top to bottom*/
-					63 /*4.Single finger slide from bottom to top:KEY_F5*/
-					64 /*5.Single finger slide circle clockwise*/
-					65 /*6.Single finger slide circle counter-clockwise*/
-					66 /*7.Single finger write letter c*/
-					67 /*8.Single finger write letter e:KEY_F9*/
-					68 /*9.Single finger write letter m*/
-					87 /*10.Single finger write letter w:KEY_F11*/
-					88 /*11.Palm off screen*/
-				>;
-
-				cy,double_tap_enabled = <1>;
+				/*cy,double_tap_enabled = <0>;*/
 				/* Double-tap-zone defined by huawei */
 				/* Shielded area is:1cm left,1cm right,3cm up,2cm down */
 				cy,dtz_x0 = <156>;
@@ -103,14 +77,14 @@
 				cy,btn_keys-tag = <0>;
 				cy,glove_support = <0>;
 				cy,holster_support = <0>;
-				cy,mmi_test_support = <1>;
+				/* cy,mmi_test_support = <1>; */
 				cy,new_fpc_flag = <1>;
 				cy,input_register_early = <1>;
 				cy,mt {
 					cy,name = "cyttsp5_mt";
 
 					cy,inp_dev_name = "cyttsp5_mt";
-					cy,flags = <0>;
+					cy,flags = <0x0>;/* CY_MT_FLAG_FLIP | CY_MT_FLAG_INV_X | CY_MT_FLAG_INV_Y */
 					cy,abs =
 						/* ABS_MT_POSITION_X, CY_ABS_MIN_X, CY_ABS_MAX_X, 0, 0 */
 						<0x35 0 880 0 0
@@ -128,7 +102,6 @@
 						0x31 0 255 0 0
 						/* ABS_MT_ORIENTATION, -127, 127, 0, 0 */
 						0x34 0xffffff81 127 0 0
-						//delete lines
 						/* ABS_DISTANCE, 0, 255, 0, 0 */
 						0x19 0 255 0 0>;
 
@@ -180,6 +153,7 @@
 		qcom,key-codes = <158 172 139>;
 	};
 };
+
 &mdss_dsi0 {
 	qcom,panel-supply-entries {
 		/delete-node/qcom,panel-supply-entry@2;

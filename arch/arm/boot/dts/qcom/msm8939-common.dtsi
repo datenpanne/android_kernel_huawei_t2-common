@@ -969,7 +969,7 @@
 		pinctrl-0 = <&spi1_default &spi1_cs0_active>;
 		pinctrl-1 = <&spi1_sleep &spi1_cs0_sleep>;
 		clocks = <&clock_gcc clk_gcc_blsp1_ahb_clk>,
-		<&clock_gcc clk_gcc_blsp1_qup1_spi_apps_clk>;
+			<&clock_gcc clk_gcc_blsp1_qup1_spi_apps_clk>;
 		clock-names = "iface_clk", "core_clk";
 		qcom,infinite-mode = <0>;
 		qcom,use-bam;

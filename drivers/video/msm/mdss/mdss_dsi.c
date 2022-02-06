@@ -552,9 +552,9 @@ static int mdss_dsi_panel_power_on_pad(struct mdss_panel_data *pdata)
 	/*delete*/
 }
 
-static int mdss_dsi_panel_power_doze(struct mdss_panel_data *pdata, int enable)
+static int mdss_dsi_panel_power_lp(struct mdss_panel_data *pdata, int enable)
 {
-	/* Panel power control when entering/exiting doze mode */
+	/* Panel power control when entering/exiting lp mode */
 	return 0;
 }
 
@@ -612,13 +612,14 @@ static int mdss_dsi_panel_power_ctrl(struct mdss_panel_data *pdata,
 				ret = mdss_dsi_panel_power_on_pad(pdata);
 			} else {
 				if (mdss_dsi_is_panel_on_lp(pdata))
-					ret = mdss_dsi_panel_power_doze(pdata, false);
+					ret = mdss_dsi_panel_power_lp(pdata, false);
 				else
 					ret = mdss_dsi_panel_power_on(pdata);
 			}
 		break;
-	case MDSS_PANEL_POWER_DOZE:
-		ret = mdss_dsi_panel_power_doze(pdata, true);
+	case MDSS_PANEL_POWER_LP1:
+	case MDSS_PANEL_POWER_LP2:
+		ret = mdss_dsi_panel_power_lp(pdata, true);
 		break;
 	default:
 		pr_err("%s: unknown panel power state requested (%d)\n",
@@ -871,7 +872,7 @@ static int mdss_dsi_off(struct mdss_panel_data *pdata, int power_state)
 		goto end;
 	}
 
-	if (power_state != MDSS_PANEL_POWER_OFF) {
+	if (mdss_panel_is_power_on(power_state)) {
 		pr_debug("%s: dsi_off with panel always on\n", __func__);
 		goto panel_power_ctrl;
 	}
@@ -940,7 +941,7 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 	struct mipi_panel_info *mipi;
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
 	int cur_power_state;
-	unsigned long timeout = jiffies;
+
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
 		return -EINVAL;
@@ -1007,10 +1008,6 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_LINK_CLKS, 1);
 	mdss_dsi_sw_reset(ctrl_pdata, true);
 
-	/* add for timeout print log */
-	/*delete cpuget() to avoid panic*/
-	LCD_LOG_INFO("%s: dsi_on_time = %u\n",
-			__func__,jiffies_to_msecs(jiffies-timeout));
 	/*
 	 * Issue hardware reset line after enabling the DSI clocks and data
 	 * data lanes for LP11 init
@@ -1170,7 +1167,7 @@ static int mdss_dsi_blank(struct mdss_panel_data *pdata, int power_state)
 
 	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 1);
 
-	if (power_state == MDSS_PANEL_POWER_DOZE) {
+	if (mdss_panel_is_power_on_lp(power_state)) {
 		pr_debug("%s: low power state requested\n", __func__);
 		if (ctrl_pdata->low_power_config)
 			ret = ctrl_pdata->low_power_config(pdata, true);
@@ -1932,13 +1929,6 @@ static int mdss_dsi_ctrl_probe(struct platform_device *pdev)
 	const char *ctrl_name;
 	bool cmd_cfg_cont_splash = true;
 	struct mdss_panel_cfg *pan_cfg = NULL;
-#ifdef CONFIG_HUAWEI_DSM
-	struct dsm_dev dsm_lcd = {
-		.name = "dsm_lcd",
-		.fops = NULL,
-		.buff_size = 1024,
-	};
-#endif
 	struct mdss_util_intf *util;
 
 	util = mdss_get_util_intf();
@@ -2063,11 +2053,6 @@ static int mdss_dsi_ctrl_probe(struct platform_device *pdev)
 		goto error_pan_node;
 	}
 
-#ifdef CONFIG_HUAWEI_DSM
-	if (!lcd_dclient) {
-		lcd_dclient = dsm_register_client(&dsm_lcd);
-	}
-#endif
 /* TE Signal instable lead to mdp-fence timeout or blank screen and can't wake up*/
 	ctrl_pdata->cmd_clk_ln_recovery_en =
 		of_property_read_bool(pdev->dev.of_node,

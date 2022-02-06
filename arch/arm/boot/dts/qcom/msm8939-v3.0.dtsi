@@ -709,6 +709,3 @@
 &bam_dmux {
 	qcom,no-cpu-affinity;
 };
-
-
-

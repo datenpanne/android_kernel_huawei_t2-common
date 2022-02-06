@@ -26,13 +26,7 @@
 #include "cyttsp5_core.h"
 #include <linux/kthread.h>
 #include <linux/regulator/consumer.h>
-#ifdef CONFIG_HUAWEI_HW_DEV_DCT
-#include <linux/hw_dev_dec.h>
-#endif
-#ifdef CONFIG_HUAWEI_DSM
-#include <dsm/dsm_pub.h>
-#endif/*CONFIG_HUAWEI_DSM*/
-
+#include <linux/bitops.h>
 
 #define CY_CORE_STARTUP_RETRY_COUNT		3
 u8 tp_color_data = 0;
@@ -43,12 +37,6 @@ static const char *cy_driver_core_version = CY_DRIVER_VERSION;
 static const char *cy_driver_core_date = CY_DRIVER_DATE;
 
 static struct holster_mode cyttsp5_holster_info = {0, 0, 0, 0, 0};
-#ifdef CONFIG_HUAWEI_DSM
-extern struct tp_dsm_info g_tp_dsm_info;
-extern struct dsm_client *tp_cyp_dclient;
-extern ssize_t cyttsp5_dsm_record_basic_err_info(struct device *dev);
-extern int cyttsp5_tp_report_dsm_err(struct device *dev, int type, int err_numb);
-#endif/*CONFIG_HUAWEI_DSM*/
 struct device *gdev = NULL;
 struct device *cyttsp5_core_dev = NULL;
 struct cyttsp5_hid_field {
@@ -957,6 +945,14 @@ static int cyttsp5_hid_send_output_and_wait_(struct cyttsp5_core_data *cd,
 	rc = cyttsp5_hid_send_output_(cd, hid_output);
 	if (rc)
 		goto error;
+
+	/* Workaround for FW defect, CDT165308
+	 * bl_launch app creates a glitch in IRQ line */
+	if (hid_output->command_code == HID_OUTPUT_BL_LAUNCH_APP) {
+		disable_irq(cd->irq);
+		msleep(20);
+		enable_irq(cd->irq);
+	}
 
 	t = wait_event_timeout(cd->wait_q, (cd->hid_cmd_state == 0),
 			msecs_to_jiffies(timeout_ms));
@@ -4053,34 +4049,10 @@ static int cyttsp5_read_input(struct cyttsp5_core_data *cd)
 	return rc;
 }
 
-static  bool cyttsp5_check_irq_asserted(struct cyttsp5_core_data *cd)
-{
-#ifdef ENABLE_WORKAROUND_FOR_GLITCH_AFTER_BL_LAUNCH_APP
-     /* Workaround for FW defect, CDT165308
-      * bl_launch app creates a glitch in IRQ line */
-    if (cd->hid_cmd_state == HID_OUTPUT_BL_LAUNCH_APP + 1
-        && cd->cpdata->irq_stat) {
-           /*
-                 in X1S panel and GC1546 panel, the width for the INT
-                 glitch is about 4us,the normal INT width of response
-                 will last more than 200us, so use 10us delay	4024
-                for distinguish the glitch the normal INT is enough.
-             */
-        udelay(20);
-        if (cd->cpdata->irq_stat(cd->cpdata, cd->dev)
-            != CY_IRQ_ASSERTED_VALUE)
-        return false;
-    }
-#endif
-    return true;
-}
-
 static irqreturn_t cyttsp5_irq(int irq, void *handle)
 {
 	struct cyttsp5_core_data *cd = handle;
 	int rc;
-	if (!cyttsp5_check_irq_asserted(cd))
-	return IRQ_HANDLED;
 
 	rc = cyttsp5_read_input(cd);
 	if (!rc)
@@ -4298,9 +4270,6 @@ static int cyttsp5_core_wake_device_from_deep_sleep_(
 				__func__, __LINE__);
 			break;
 		}
-#ifdef CONFIG_HUAWEI_DSM
-		cyttsp5_tp_report_dsm_err(cd->dev, DSM_TP_CYTTSP5_WAKEUP_ERROR_NO, 0);
-#endif/*CONFIG_HUAWEI_DSM*/
 		tp_log_err("%s %d: Fail to set power status, retry = %d\n",
 			__func__, __LINE__, retry_times);
 		rc =  -EAGAIN;
@@ -4412,7 +4381,6 @@ reset:
 		if (rc < 0) {
 			tp_log_err( "%s: Error on launch app r=%d\n",
 				__func__, rc);
-
 			RETRY_OR_EXIT(retry--, reset, exit);
 		}
 		rc = cyttsp5_get_hid_descriptor_(cd, &cd->hid_desc);
@@ -4736,7 +4704,7 @@ static int cyttsp5_startup_(struct cyttsp5_core_data *cd, bool reset)
 		cyttsp5_power_on(cd->dev, cd);
 		mdelay(100);
 	}
-	
+
 reset:
 	if (retry != CY_CORE_STARTUP_RETRY_COUNT)
 		tp_log_debug( "%s: Retry %d\n", __func__,
@@ -4759,10 +4727,6 @@ reset:
 	/* if hardware rest 3 times, the ic is still not work,
 	 * we re-power it */
 	if ((0 == retry) && (rc < 0)) {
-#ifdef CONFIG_HUAWEI_DSM
-		g_tp_dsm_info.constraints_ESD_status = rc;
-		cyttsp5_tp_report_dsm_err(cd->dev, DSM_TP_ESD_ERROR_NO, g_tp_dsm_info.constraints_ESD_status);
-#endif/*CONFIG_HUAWEI_DSM*/
 		tp_log_info("%s: start to re-power\n", __func__);
 		gpio_set_value(cd->cpdata->rst_gpio, 0);
 
@@ -5424,11 +5388,9 @@ static ssize_t cyttsp5_easy_wakeup_gesture_show(struct device *dev,
 	return ret;
 }
 
-static ssize_t cyttsp5_easy_wakeup_gesture_store(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t size)
+static int cyttsp5_easy_wakeup_gesture_parse(struct cyttsp5_core_data *cd,
+		const char *buf, unsigned long *value)
 {
-	struct cyttsp5_core_data *cd = dev_get_drvdata(dev);
-	unsigned long value;
 	int ret;
 
 	if (!(cd->cpdata->flags & CY_CORE_FLAG_WAKE_ON_GESTURE)) {
@@ -5451,22 +5413,25 @@ static ssize_t cyttsp5_easy_wakeup_gesture_store(struct device *dev,
 		return -EINVAL;
 	}
 
-	ret = kstrtoul(buf, 10, &value);
+	ret = kstrtoul(buf, 10, value);
 	if (ret < 0) {
 		tp_log_err("%s %d:Parse input value fail, value: %s, ret:%d\n",
 					__func__, __LINE__, buf, ret);
 		return -EINVAL;
 	}
 
-	tp_log_info("%s %d:Input value: %lu\n", __func__, __LINE__, value);
-	if (value > 0xFFFF) {
-		tp_log_err("%s %d:Error value: %lu\n", __func__, __LINE__, value);
+	tp_log_info("%s %d:Input value: %lu\n", __func__, __LINE__, *value);
+	if (*value > 0xFFFF) {
+		tp_log_err("%s %d:Error value: %lu\n", __func__, __LINE__, *value);
 		return -EINVAL;
 	}
 
-	pm_runtime_get_sync(dev);
+	return 0;
+}
 
-	mutex_lock(&cd->system_lock);
+static int cyttsp5_easy_wakeup_gesture_set(struct cyttsp5_core_data *cd,
+		unsigned long value)
+{
 	if (cd->sysinfo.ready && IS_PIP_VER_GE(&cd->sysinfo, 1, 2)) {
 		cd->easy_wakeup_gesture = (unsigned int)value;
 	} else {
@@ -5474,8 +5439,28 @@ static ssize_t cyttsp5_easy_wakeup_gesture_store(struct device *dev,
 					cd->sysinfo.ready);
 		tp_log_err("%s %d:easy wakeup Error value: %d\n", __func__, __LINE__,
 					IS_PIP_VER_GE(&cd->sysinfo, 1, 2));
-		ret = -ENODEV;
+		return -ENODEV;
 	}
+
+	return 0;
+}
+
+static ssize_t cyttsp5_easy_wakeup_gesture_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct cyttsp5_core_data *cd = dev_get_drvdata(dev);
+	unsigned long value;
+	int ret;
+
+	ret = cyttsp5_easy_wakeup_gesture_parse(cd, buf, &value);
+	if (ret) {
+		return ret;
+	}
+
+	pm_runtime_get_sync(dev);
+
+	mutex_lock(&cd->system_lock);
+	ret = cyttsp5_easy_wakeup_gesture_set(cd, value);
 	mutex_unlock(&cd->system_lock);
 
 	pm_runtime_put(dev);
@@ -5526,6 +5511,54 @@ static ssize_t cyttsp5_easy_wakeup_position_show(struct device *dev,
 	mutex_unlock(&cd->system_lock);
 
 	return print_idx;
+}
+
+static ssize_t cyttsp5_tap_to_wake_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct cyttsp5_core_data *cd = dev_get_drvdata(dev);
+	int value;
+	ssize_t ret;
+
+	mutex_lock(&cd->system_lock);
+	value = cd->easy_wakeup_gesture & BIT_MASK(GESTURE_DOUBLE_CLICK);
+	mutex_unlock(&cd->system_lock);
+
+	ret = snprintf(buf, CY_MAX_PRBUF_SIZE, "0x%02X\n", value);
+	return ret;
+}
+
+static ssize_t cyttsp5_tap_to_wake_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct cyttsp5_core_data *cd = dev_get_drvdata(dev);
+	unsigned long value;
+	int ret;
+
+	ret = cyttsp5_easy_wakeup_gesture_parse(cd, buf, &value);
+	if (ret) {
+		return ret;
+	}
+
+	pm_runtime_get_sync(dev);
+
+	mutex_lock(&cd->system_lock);
+	if (value) {
+		value = cd->easy_wakeup_gesture | BIT_MASK(GESTURE_DOUBLE_CLICK);
+	}
+	else {
+		value = cd->easy_wakeup_gesture & ~BIT_MASK(GESTURE_DOUBLE_CLICK);
+	}
+	ret = cyttsp5_easy_wakeup_gesture_set(cd, value);
+	mutex_unlock(&cd->system_lock);
+
+	pm_runtime_put(dev);
+
+	if (ret) {
+		tp_log_err("%s %d:end with error NO.: %d\n", __func__, __LINE__, ret);
+		return ret;
+	}
+	return size;
 }
 
 /* Show Panel ID via sysfs */
@@ -5955,6 +5988,30 @@ static ssize_t hw_cyttsp5_easy_wakeup_supported_gestures_show(struct kobject *de
 	return cyttsp5_easy_wakeup_supported_gestures_show(cdev, NULL, buf);
 }
 
+static ssize_t hw_cyttsp5_tap_to_wake_show(struct kobject *dev,
+		struct kobj_attribute *attr, char *buf)
+{
+	struct device *cdev = cyttsp5_core_dev;
+	if (!cdev){
+		tp_log_err("%s: device is null", __func__);
+		return -EINVAL;
+	}
+
+	return cyttsp5_tap_to_wake_show(cdev, NULL, buf);
+}
+
+static ssize_t hw_cyttsp5_tap_to_wake_store(struct kobject *dev,
+		struct kobj_attribute *attr, const char *buf, size_t size)
+{
+	struct device *cdev = cyttsp5_core_dev;
+	if (!cdev){
+		tp_log_err("%s: device is null", __func__);
+		return -EINVAL;
+	}
+
+	return cyttsp5_tap_to_wake_store(cdev, NULL, buf, size);
+}
+
 static struct kobj_attribute easy_wakeup_gesture = {
 	.attr = {.name = "easy_wakeup_gesture", .mode = (S_IRUGO | S_IWUSR | S_IWGRP)},
 	.show = hw_cyttsp5_easy_wakeup_gesture_show,
@@ -5972,6 +6029,12 @@ static struct kobj_attribute easy_wakeup_position = {
 	.attr = {.name = "easy_wakeup_position", .mode = (S_IRUGO | S_IWUSR | S_IWGRP)},
 	.show = hw_cyttsp5_easy_wakeup_position_show,
 	.store = hw_cyttsp5_easy_wakeup_position_store,
+};
+
+static struct kobj_attribute tap_to_wake = {
+	.attr = {.name = "tap_to_wake", .mode = (S_IRUGO | S_IWUSR | S_IWGRP)},
+	.show = hw_cyttsp5_tap_to_wake_show,
+	.store = hw_cyttsp5_tap_to_wake_store,
 };
 
 static struct kobj_attribute glove_func = {
@@ -6025,6 +6088,15 @@ static int add_easy_wakeup_interfaces(struct device *dev)
 		{
 			kobject_put(properties_kobj);
 			tp_log_err("%s: easy_wakeup_position create file error\n", __func__);
+			return -ENODEV;
+		}
+
+		/*add the node tap_to_wake for apk to write*/
+		error = sysfs_create_file(properties_kobj, &tap_to_wake.attr);
+		if (error)
+		{
+			kobject_put(properties_kobj);
+			tp_log_err("%s: tap_to_wake create file error\n", __func__);
 			return -ENODEV;
 		}
 	}
@@ -6307,7 +6379,7 @@ static int cyttsp5_setup_irq_gpio(struct cyttsp5_core_data *cd)
 		tp_log_err("%s %d: Error, could not request irq, rc = %d\n",
 					__func__, __LINE__, rc);
 	}
-	
+
 	return rc;
 }
 
@@ -6373,7 +6445,7 @@ static int cyttsp5_power_init(struct device* dev, struct cyttsp5_core_data *pcor
 			goto err_vdd_free;
 		}
 
-		rc = regulator_set_voltage(cpower->vbus_reg, cpower->vbus_value, cpower->vbus_value);
+		rc = regulator_set_voltage(cpower->vbus_reg, 1800000,1800000);
 		if (rc < 0) {
 			tp_log_err( "%s %d: vbus regulator set fail, rc=%d\n", __func__,__LINE__,rc);
 			regulator_put(cpower->vbus_reg);
@@ -6755,11 +6827,6 @@ int cyttsp5_probe(const struct cyttsp5_bus_ops *ops, struct device *dev,
 		tp_log_err( "%s: Error, fail proximity probe\n", __func__);
 		goto error_startup_btn;
 	}
-
-#ifdef CONFIG_HUAWEI_HW_DEV_DCT
-	/* detect current device successful, set the flag as present */
-	set_hw_dev_flag(DEV_I2C_TOUCH_PANEL);
-#endif
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	cyttsp5_setup_early_suspend(cd);

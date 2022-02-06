@@ -1825,13 +1825,6 @@ static int __mdss_mdp_overlay_release_all(struct msm_fb_data_type *mfd,
 	}
 	mutex_unlock(&mdp5_data->ov_lock);
 
-/* power off charge flash blue screen when pull out usb line */
-#ifdef CONFIG_HUAWEI_LCD
-	if (cnt && mfd->panel_power_state == MDSS_PANEL_POWER_ON)
-#else
-	if (cnt)
-#endif
-		mfd->mdp.kickoff_fnc(mfd, NULL);
 	list_for_each_entry_safe(rot, tmp, &mdp5_data->rot_proc_list, list) {
 		if (rot->pid == pid) {
 			if (!list_empty(&rot->list))
@@ -1840,7 +1833,7 @@ static int __mdss_mdp_overlay_release_all(struct msm_fb_data_type *mfd,
 		}
 	}
 
-	return 0;
+	return cnt;
 }
 
 static int mdss_mdp_overlay_play_wait(struct msm_fb_data_type *mfd,
@@ -3747,7 +3740,7 @@ error:
 
 static int mdss_mdp_overlay_on(struct msm_fb_data_type *mfd)
 {
-	int rc, ad_ret;
+	int rc;
 	struct mdss_overlay_private *mdp5_data;
 	struct mdss_mdp_ctl *ctl = NULL;
 
@@ -3796,12 +3789,6 @@ panel_on:
 		pr_err("Failed to turn on fb%d\n", mfd->index);
 		mdss_mdp_overlay_off(mfd);
 		goto end;
-	}
-
-	if (mfd->mdp.ad_work_setup) {
-		ad_ret = mfd->mdp.ad_work_setup(mfd);
-		if (ad_ret)
-			pr_err("AD work queue setup failed! ret =%d\n", ad_ret);
 	}
 
 end:

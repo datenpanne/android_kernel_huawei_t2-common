@@ -168,7 +168,6 @@ enum dsi_pm_type {
 /* Update this if more interrupt masks are added in future chipsets */
 #define DSI_INTR_TOTAL_MASK		0x2222AA02
 
-/* TE Signal instable lead to mdp-fence timeout or blank screen and can't wake up*/
 #define DSI_INTR_MASK_ALL	\
 		(DSI_INTR_DESJEW_MASK | \
 		DSI_INTR_DYNAMIC_REFRESH_MASK | \
@@ -373,7 +372,6 @@ struct mdss_dsi_ctrl_pdata {
 	bool dsi_irq_line;
 	atomic_t te_irq_ready;
 
-/* TE Signal instable lead to mdp-fence timeout or blank screen and can't wake up*/
 	bool cmd_clk_ln_recovery_en;
 	bool cmd_sync_wait_broadcast;
 	bool cmd_sync_wait_trigger;
@@ -539,7 +537,6 @@ void mdss_dsi_phy_sw_reset(struct mdss_dsi_ctrl_pdata *ctrl);
 void mdss_dsi_phy_init(struct mdss_dsi_ctrl_pdata *ctrl);
 void mdss_dsi_ctrl_init(struct device *ctrl_dev,
 			struct mdss_dsi_ctrl_pdata *ctrl);
-/* TE Signal instable lead to mdp-fence timeout or blank screen and can't wake up*/
 int mdss_dsi_cmd_mdp_busy(struct mdss_dsi_ctrl_pdata *ctrl);
 void mdss_dsi_wait4video_done(struct mdss_dsi_ctrl_pdata *ctrl);
 void mdss_dsi_en_wait4dynamic_done(struct mdss_dsi_ctrl_pdata *ctrl);

@@ -36,6 +36,7 @@
 #include <linux/pm_runtime.h>
 #include <linux/wait.h>
 #include <linux/gpio.h>
+
 #include <asm/io.h>
 #include <linux/platform_device.h>
 #include <linux/input.h>
@@ -61,6 +62,7 @@
 #define GPIO_CONFIG_RIGHT_SOUTH "huawei,hall_gpio_config_rs"
 #define GPIO_CONFIG_LEFT_NORTH "huawei,hall_gpio_config_ln"
 #define GPIO_CONFIG_LEFT_SOUTH "huawei,hall_gpio_config_ls"
+
 #define GPIO_CONFIG_COVER "huawei,hall_gpio_config_cover"
 
 /*gpio name*/
@@ -85,6 +87,7 @@
 #define HALL_VALUE_RIGHT_SOUTH	(1<<1)
 #define HALL_VALUE_CAMARA_NORTH	(1<<4)
 #define HALL_VALUE_CAMARA_SOUTH	(1<<5)
+
 /*the level to print log of ak8789, default level is just to print info log*/
 #define AK8789_LOG_FLOW 2
 #define AK8789_LOG_INFO 1
@@ -123,18 +126,18 @@ do{\
 	}\
 } while(0)
 
-typedef struct gpio_struct{
+typedef struct gpio_struct {
 	int gpio;
 	/*the flag of wake up present that the pole can be or not be waked up*/
 	/*can: IRQF_NO_SUSPEND, can not: IRQF_TRIGGER_NONE */
 	unsigned long wake_up;
 	char *name;
 	int hall_value;/*hall value*/
-}gpio_data_t;
+} gpio_data_t;
 
 /*support four type 2 4,the number presents how many poles the mobile has*/
 /*mate2 has two hall device ,four poles*/
-typedef enum hall_used_type{
+typedef enum hall_used_type {
 	/*for only one hall devices: connect only one pin another pin floating*/
 	ONE_POLE_ONE_PIN = 0,
 	ONE_POLE = 1,
@@ -163,6 +166,7 @@ static irqreturn_t hall_event_isr(int irq, void *dev);
 static struct of_device_id ak8789_match_table[] = {
 	{	.compatible = "huawei,hall-ak8789",
 	},
+	{ },
 };
 
 static struct hall_dev hw_hall_dev = {
@@ -190,8 +194,7 @@ static struct hall_dev hw_hall_dev = {
 
 /***************************************************************
 Function: query_hall_event
-Description: request the state of hall gpios, if four gpios state are low-low-high-high,
-* than the value will be 1100
+Description: request the state of hall gpios,if four gpios state are low-low-high-high,than the value will be 1100
 Parameters:void
 Return:value of state of hall gpios
 ***************************************************************/
@@ -203,10 +206,9 @@ int query_hall_event(void)
 
 	gpio_data_t *gpio_ptr = hw_hall_dev.gpio_data;
 	AK8789_FLOWMSG("run query_hall_event; hw_hall_dev.gpio_nums(0x%x)\n", hw_hall_dev.gpio_nums);
-	for ( i = 0; i < hw_hall_dev.gpio_nums; i++){
+	for (i = 0; i < hw_hall_dev.gpio_nums; i++) {
 		GROUP_VALUE(gpio_ptr->gpio, gpio_ptr->hall_value);
-		AK8789_FLOWMSG("gpio_ptr->gpio=%d,gpio_ptr->hall_value=0x%x,value=0x%x", gpio_ptr->gpio,
-				gpio_ptr->hall_value,value);
+		AK8789_FLOWMSG("gpio_ptr->gpio=%d,gpio_ptr->hall_value=0x%x,value=0x%x", gpio_ptr->gpio, gpio_ptr->hall_value, value);
 		gpio_ptr++;
 	}
 
@@ -215,8 +217,7 @@ int query_hall_event(void)
 
 /***************************************************************
 Function: hall_irq_level_set
-Description: According to the current state of the GPIO level , ak8789 GPIO irq level is set to the
-* opposite state when enable.
+Description: According to the current state of the GPIO level , ak8789 GPIO irq level is set to the opposite state when enable.
 Parameters:
 Return:
 ***************************************************************/
@@ -232,7 +233,7 @@ static int hall_irq_level_set(gpio_data_t *gpio_ptr)
 	irq = gpio_to_irq(gpio_num);
 	AK8789_FLOWMSG("the gpio num : %d, val : %d; irq: %d", gpio_num, gpio_val, irq);
 	/*if current gpio is high, set low as irq, otherwise vs*/
-	if(gpio_val == 1)
+	if (gpio_val == 1)
 	{
 		ret = irq_set_irq_type(irq, IRQF_TRIGGER_LOW);
 		if (ret)
@@ -274,35 +275,33 @@ static ssize_t ak8789_store_enable_hall_sensor(struct device *dev,
 	unsigned long wake_flags ;
 
 	AK8789_FLOWMSG("enable_status: %d; enable value %lu", atomic_read(&hall_enable_status), val);
-	if ((val == 1) && (atomic_read(&hall_enable_status) == 0)){
+	if ((val == 1) && (atomic_read(&hall_enable_status) == 0)) {
 		/*enable the hall device*/
 		atomic_set(&hall_enable_status, 1);
 		value = query_hall_event();
 		input_event(hw_hall_dev.hw_input_hall, EV_MSC, MSC_SCAN, value);
 		input_sync(hw_hall_dev.hw_input_hall);
 		gpio_ptr = hw_hall_dev.gpio_data;
-		for (i = 0;  i < hw_hall_dev.gpio_nums;  i++)
-		{
+		for (i = 0; i < hw_hall_dev.gpio_nums; i++) {
 			irq =  gpio_to_irq(gpio_ptr->gpio);
 			wake_flags = gpio_ptr->wake_up;
 			hall_irq_level_set(gpio_ptr);
 			enable_irq(irq);
-			if(IRQF_TRIGGER_NONE == wake_flags)
-			{
+			if (IRQF_TRIGGER_NONE == wake_flags) {
 				irq_set_irq_wake(irq , 1);
 			}
 			gpio_ptr++;
 			AK8789_FLOWMSG("irq enable : %d; wake_flags: 0x%lx;", irq,  wake_flags);
 		}
-	} else if ((val == 0) && (atomic_read(&hall_enable_status) == 1)){
+	} else if ((val == 0) && (atomic_read(&hall_enable_status) == 1)) {
 		/*disable the hall devices*/
 		atomic_set(&hall_enable_status, 0);
 		gpio_ptr = hw_hall_dev.gpio_data;
 		for (i = 0; i < hw_hall_dev.gpio_nums; i++) {
 			irq =  gpio_to_irq(gpio_ptr->gpio);
 			wake_flags = gpio_ptr->wake_up;
-			if(IRQF_NO_SUSPEND == wake_flags) {
-				irq_set_irq_wake(irq , 0);
+			if (IRQF_NO_SUSPEND == wake_flags) {
+				irq_set_irq_wake(irq, 0);
 			}
 			disable_irq(irq);
 			gpio_ptr++;
@@ -311,8 +310,7 @@ static ssize_t ak8789_store_enable_hall_sensor(struct device *dev,
 		del_timer_sync(&hw_hall_dev.hall_timer);
 		cancel_work_sync(&hw_hall_dev.hall_work);
 	} else {
-		AK8789_ERRMSG("hall state %d not change or  enable value %lu  error",
-				atomic_read(&hall_enable_status), val);
+		AK8789_ERRMSG("hall state %d not change or enable value %lu error", atomic_read(&hall_enable_status), val);
 		return count;
 	}
 
@@ -325,8 +323,7 @@ static ssize_t ak8789_show_enable_hall_sensor(struct device *dev,
 	return snprintf(buf, PAGE_SIZE, "%d\n", atomic_read(&hall_enable_status));
 }
 /*change the permissions of sys devices of hall*/
-static DEVICE_ATTR(enable_hall_sensor, S_IWUSR|S_IRUSR|S_IRUGO,
-		ak8789_show_enable_hall_sensor, ak8789_store_enable_hall_sensor);
+static DEVICE_ATTR(enable_hall_sensor, S_IWUSR|S_IRUSR|S_IRUGO, ak8789_show_enable_hall_sensor, ak8789_store_enable_hall_sensor);
 
 static ssize_t ak8789_show_get_hall_status(struct device *dev,
 				struct device_attribute *attr, char *buf)
@@ -348,11 +345,10 @@ static ssize_t ak8789_show_camera_overturn_num(struct device *dev,
 	// hardcode 0 here, this is referenced in a blob
 	return snprintf(buf, PAGE_SIZE, "0\n");
 }
-static DEVICE_ATTR(camera_overturn_num, S_IWUSR|S_IRUSR|S_IRUGO,
-		ak8789_show_camera_overturn_num, NULL);
 
-static ssize_t ak8789_show_get_camera_status(struct device *dev, struct device_attribute *attr,
-		char *buf)
+static DEVICE_ATTR(camera_overturn_num, S_IWUSR|S_IRUSR|S_IRUGO, ak8789_show_camera_overturn_num, NULL);
+
+static ssize_t ak8789_show_get_camera_status(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	int value = 0;
 	gpio_data_t *gpio_ptr = hw_hall_dev.gpio_data;
@@ -387,7 +383,7 @@ void hall_work_func(struct work_struct *work)
 	input_report_switch(hw_hall_dev.hw_input_hall, SW_LID, value & 0x1);
 	input_sync(hw_hall_dev.hw_input_hall);
 
-	AK8789_WARNMSG("input hall event:0x%x",value);
+	AK8789_WARNMSG("input hall event:0x%x", value);
 }
 
 int gpio_setup(int gpio_num, const char* gpio_name)
@@ -395,13 +391,13 @@ int gpio_setup(int gpio_num, const char* gpio_name)
 	int ret = 0;
 
 	ret = gpio_request(gpio_num, gpio_name);
-	if  (ret){
+	if (ret) {
 		AK8789_ERRMSG("requset gpio %d err %d", gpio_num, ret);
 		return ret;
 	}
 
 	ret = gpio_direction_input(gpio_num);
-	if (ret){
+	if (ret) {
 		AK8789_ERRMSG("gpio %d direction input err %d", gpio_num, ret);
 		return ret;
 	}
@@ -419,7 +415,7 @@ irqreturn_t hall_event_isr(int irq, void *dev)
 	int value_debounce = 0;
 	AK8789_FLOWMSG("called hall_event_isr,irq=%d",irq);
 
-	if ((!data)||(!desc)){
+	if ((!data) || (!desc)) {
 		AK8789_ERRMSG("dev null, or irq_desc null");
 		return IRQ_NONE;
 	}
@@ -431,12 +427,12 @@ irqreturn_t hall_event_isr(int irq, void *dev)
 	/*set the irq type of hall irq*/
 	if (trigger & IRQF_TRIGGER_LOW) {
 		ret = irq_set_irq_type(irq, IRQF_TRIGGER_HIGH);
-		if (ret){
+		if (ret) {
 			AK8789_ERRMSG(" hall irq_set_irq_type error %s", desc->name);
 		}
-	}else if (trigger & IRQF_TRIGGER_HIGH) {
+	} else if (trigger & IRQF_TRIGGER_HIGH) {
 		ret = irq_set_irq_type(irq, IRQF_TRIGGER_LOW);
-		if (ret){
+		if (ret) {
 			AK8789_ERRMSG(" hall irq_set_irq_type error %s", desc->name);
 		}
 	} else {
@@ -450,17 +446,15 @@ irqreturn_t hall_event_isr(int irq, void *dev)
 	/*prevent the shake*/
 	if (AKM8789_TIMER_DEBOUNCE) {
 		/*del this, query hall value On the front*/
-		/*if the event is close the holster, 100ms debounce time*/
+		/*if the event is close the holster,100ms debounce time*/
 		if (value_debounce == HALL_VALUE_RIGHT_NORTH)
 		{
-			mod_timer(&(data->hall_timer),
-					jiffies + msecs_to_jiffies(AKM8789_TIMER_DOUBLE_DEBOUNCE));
+			mod_timer(&(data->hall_timer), jiffies + msecs_to_jiffies(AKM8789_TIMER_DOUBLE_DEBOUNCE));
 		}
-		/*if the event is open the holster, 50ms debounce time*/
+		/*if the event is open the holster,50ms debounce time*/
 		else
 		{
-			mod_timer(&(data->hall_timer),
-					jiffies + msecs_to_jiffies(AKM8789_TIMER_DEBOUNCE));
+			mod_timer(&(data->hall_timer), jiffies + msecs_to_jiffies(AKM8789_TIMER_DEBOUNCE));
 		}
 	} else {
 		queue_work(data->hall_wq, &data->hall_work);
@@ -469,35 +463,33 @@ irqreturn_t hall_event_isr(int irq, void *dev)
 	return IRQ_HANDLED;
 }
 
-int hall_request_irq(int current_value, int hall_value, int irq, const char *name,
-		unsigned long wake_flags)
+int hall_request_irq(int current_value, int hall_value, int irq, const char *name, unsigned long wake_flags)
 {
 	int ret = 0;
-	AK8789_FLOWMSG("name=%s current_value=0x%x hall_value=0x%x irq %d flags %lu",
-			name, current_value, hall_value, irq, wake_flags);
+	AK8789_FLOWMSG("name=%s current_value=0x%x hall_value=0x%x irq %d flags %lu", name, current_value, hall_value, irq, wake_flags);
 
 	/*if current gpio is high, set low as irq, otherwise vs*/
-	if (!(current_value & hall_value)){
+	if (!(current_value & hall_value)) {
 		ret = request_irq(irq, hall_event_isr,
 			 IRQF_TRIGGER_LOW | wake_flags, name, &hw_hall_dev);
-		if (ret){
+		if (ret) {
 			AK8789_ERRMSG("gpio %s request_irq fail %d", name, ret);
 			return ret;
 		}
 		/*if the gpio can wake up, then set up the irq wake type*/
-		if(IRQF_NO_SUSPEND == wake_flags){
-			irq_set_irq_wake(irq , 1);
+		if (IRQF_NO_SUSPEND == wake_flags) {
+			irq_set_irq_wake(irq, 1);
 		}
-	}else{
+	} else {
 		ret = request_irq(irq, hall_event_isr,
 			 IRQF_TRIGGER_HIGH | wake_flags, name, &hw_hall_dev);
-		if (ret){
-			AK8789_ERRMSG("gpio %s request_irq fail %d",name, ret);
+		if (ret) {
+			AK8789_ERRMSG("gpio %s request_irq fail %d", name, ret);
 			return ret;
 		}
 		/*if the gpio can wake up, then set up the irq wake type*/
-		if(IRQF_NO_SUSPEND == wake_flags){
-			irq_set_irq_wake(irq , 1);
+		if (IRQF_NO_SUSPEND == wake_flags) {
+			irq_set_irq_wake(irq, 1);
 		}
 	}
 
@@ -511,13 +503,13 @@ static int hall_gpio_irq_setup(void)
 	int i = 0;
 	gpio_data_t *gpio_ptr = hw_hall_dev.gpio_data;
 
-	for (i = 0; i < hw_hall_dev.gpio_nums; i++){
+	for (i = 0; i < hw_hall_dev.gpio_nums; i++) {
 		ret = gpio_setup(gpio_ptr->gpio, gpio_ptr->name);
-		if (ret){
+		if (ret) {
 			AK8789_ERRMSG("gpio_setup failed %s", gpio_ptr->name);
 			return ret;
 		}
-		AK8789_WARNMSG("gpio_setup success gpio=%d",gpio_ptr->gpio);
+		AK8789_WARNMSG("gpio_setup success gpio=%d", gpio_ptr->gpio);
 		gpio_ptr++;
 	}
 
@@ -526,10 +518,9 @@ static int hall_gpio_irq_setup(void)
 	gpio_ptr = hw_hall_dev.gpio_data;
 
 	/*just N need wakeup*/
-	for (i = 0; i < hw_hall_dev.gpio_nums; i++){
-		ret = hall_request_irq(value, gpio_ptr->hall_value, gpio_to_irq(gpio_ptr->gpio),
-				gpio_ptr->name, gpio_ptr->wake_up);
-		if (ret){
+	for (i = 0; i < hw_hall_dev.gpio_nums; i++) {
+		ret = hall_request_irq(value, gpio_ptr->hall_value, gpio_to_irq(gpio_ptr->gpio), gpio_ptr->name, gpio_ptr->wake_up);
+		if (ret) {
 			AK8789_ERRMSG("hall _request_irq error%d", ret);
 			return ret;
 		}
@@ -538,7 +529,6 @@ static int hall_gpio_irq_setup(void)
 
 	return ret;
 }
-
 
 static int hall_parse_dt(struct device *dev)
 {
@@ -550,7 +540,7 @@ static int hall_parse_dt(struct device *dev)
 	int gpio;
 
 	/*for RIO*/
-	gpio_data_t  one_pole_config_for_rio[1]={
+	 gpio_data_t  one_pole_config_for_rio[1]={
 		[0] ={
 			.wake_up		= IRQF_NO_SUSPEND,
 			.name			= GPIO_CONFIG_COVER,
@@ -558,11 +548,11 @@ static int hall_parse_dt(struct device *dev)
 		},
 	};
 	/*for g660s*/
-	gpio_data_t  one_pole_config[2]={
+	 gpio_data_t  one_pole_config[2]={
 		[0] ={
 			.wake_up		= WAKE_FLAG_RIGHT_NORTH,
 			.name			= GPIO_CONFIG_RIGHT_NORTH,
-			.hall_value 	= HALL_VALUE_RIGHT_NORTH,
+			.hall_value		= HALL_VALUE_RIGHT_NORTH,
 		},
 		[1] ={
 			.wake_up		= WAKE_FLAG_RIGHT_SOUTH,
@@ -577,7 +567,7 @@ static int hall_parse_dt(struct device *dev)
 		goto err_no_poles;
 	}
 
-	switch(used_type)
+	switch (used_type)
 	{
 		case ONE_POLE_ONE_PIN:
 			which_pole = one_pole_config_for_rio;
@@ -597,25 +587,24 @@ static int hall_parse_dt(struct device *dev)
 	hw_hall_dev.used_type = (hall_used_type_t)(used_type);
 	AK8789_FLOWMSG("ak8789 hw_hall_dev.used_type=%d", hw_hall_dev.used_type);
 
-	hw_hall_dev.gpio_data = kzalloc(sizeof(*hw_hall_dev.gpio_data) * max(used_type, ONE_POLE),
-			GFP_KERNEL);
-	if (hw_hall_dev.gpio_data == NULL){
+	hw_hall_dev.gpio_data = kzalloc(sizeof(*hw_hall_dev.gpio_data) * max(used_type, ONE_POLE), GFP_KERNEL);
+	if (hw_hall_dev.gpio_data == NULL) {
 			AK8789_ERRMSG("kzalloc err");
 			goto err_no_poles;
 	}
 	gpio_ptr = hw_hall_dev.gpio_data ;
 
-	memcpy(gpio_ptr,which_pole, sizeof(gpio_data_t) * hw_hall_dev.gpio_nums);
+	memcpy(gpio_ptr, which_pole, sizeof(gpio_data_t) * hw_hall_dev.gpio_nums);
 
-	for(i = 0; i < hw_hall_dev.gpio_nums; i++) {
-		temp_val = of_get_named_gpio(np,which_pole[i].name,0);
+	for (i = 0; i < hw_hall_dev.gpio_nums; i++) {
+		temp_val = of_get_named_gpio(np, which_pole[i].name, 0);
 		if (!gpio_is_valid(temp_val)) {
 			AK8789_ERRMSG("Unable to read ak8789 irq gpio");
 			err = temp_val;
 			goto free_pole_data;
 		} else {
 			gpio = temp_val;
-			AK8789_FLOWMSG("ak8789 irq gpio=%d",gpio);
+			AK8789_FLOWMSG("ak8789 irq gpio=%d", gpio);
 		}
 
 		gpio_ptr->gpio = gpio;
@@ -635,7 +624,7 @@ int hall_pf_probe(struct platform_device *pdev)
 	int err = 0;
 	int ret = 0;
 	err = hall_parse_dt(&pdev->dev);
-	if(err)
+	if (err)
 		goto err_probe_start;
 
 	hw_hall_dev.pinctrl = devm_pinctrl_get(&pdev->dev);
@@ -657,16 +646,17 @@ int hall_pf_probe(struct platform_device *pdev)
 	}
 
 	err =  sysfs_create_group(&pdev->dev.kobj, &ak8789_attr_group);
-	if (err){
+	if (err) {
 		AK8789_ERRMSG("sysfs create error %d", err);
 		goto pinctrl_fail;
 	}
 
 	hw_hall_dev.hw_input_hall = input_allocate_device();
-	if (IS_ERR(hw_hall_dev.hw_input_hall)){
+	if (IS_ERR(hw_hall_dev.hw_input_hall)) {
 		AK8789_ERRMSG("hw_input_hall alloc error %ld", PTR_ERR(hw_hall_dev.hw_input_hall));
 		goto input_err;
 	}
+
 	hw_hall_dev.hw_input_hall->name = "hall";
 	set_bit(EV_MSC, hw_hall_dev.hw_input_hall->evbit);
 	set_bit(EV_SW, hw_hall_dev.hw_input_hall->evbit);
@@ -675,7 +665,7 @@ int hall_pf_probe(struct platform_device *pdev)
 	input_set_capability(hw_hall_dev.hw_input_hall, EV_SW, SW_LID);
 
 	err = input_register_device(hw_hall_dev.hw_input_hall);
-	if (err){
+	if (err) {
 		AK8789_ERRMSG("hw_input_hall regiset error %d", err);
 		goto input_register_fail;
 	}
@@ -683,7 +673,7 @@ int hall_pf_probe(struct platform_device *pdev)
 	wake_lock_init(&hall_wk, WAKE_LOCK_SUSPEND, "hall_wakelock");
 
 	hw_hall_dev.hall_wq = create_singlethread_workqueue("hall_wq");
-	if (IS_ERR(hw_hall_dev.hall_wq)){
+	if (IS_ERR(hw_hall_dev.hall_wq)) {
 		AK8789_ERRMSG("wq create error %ld", PTR_ERR(hw_hall_dev.hall_wq));
 		input_unregister_device(hw_hall_dev.hw_input_hall);
 		goto input_err;
@@ -725,7 +715,7 @@ static int ak8789_init(void)
 {
 	int err;
 	err = platform_driver_register(&hw_hall_dev.hall_drv_pf);
-	if (err){
+	if (err) {
 		AK8789_ERRMSG("hall_pf_drv_fall regiset error %d", err);
 		goto hall_pf_drv_fail;
 	}

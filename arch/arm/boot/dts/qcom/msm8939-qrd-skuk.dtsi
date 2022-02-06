@@ -245,7 +245,6 @@
 	};
 };
 
-
 /*remove usb otg for not use*/
 
 &mdss_mdp {
@@ -258,8 +257,8 @@
 };
 
 &pmx_mdss_te {
-qcom,num-grp-pins = <1>;
-qcom,pins = <&gp 24>;
+	qcom,num-grp-pins = <1>;
+	qcom,pins = <&gp 24>;
 };
 
 &mdss_dsi0 {

@@ -52,8 +52,8 @@ static int dim_flag = 0;
 static long cofficient_judge = 246;
 static long cofficient_red[2]={423, 234};
 static long cofficient_green[2] = {2399, 2227};
-static long cofficient_blue[2] = {0,0};
-enum tp_color_id{
+static long cofficient_blue[2] = {0, 0};
+enum tp_color_id {
 	GOLD = 0,
 	WHITE,
 	BLACK,
@@ -101,6 +101,7 @@ static const char *data_array_name[MODULE_MANUFACTURE_NUMBER] = {
 	[1] = "bh1745,cal_data1",
 	[2] = "bh1745,cal_data2"
 };
+
 typedef struct rgb_bh1745_rgb_data {
     int red;
     int green;
@@ -110,7 +111,7 @@ typedef struct rgb_bh1745_rgb_data {
     int color_temp;
 } rgb_bh1745_rgb_data;
 
-struct lux_cal_parameter{
+struct lux_cal_parameter {
 	long judge;
 	long cw_r_gain;
 	long other_r_gain;
@@ -120,18 +121,17 @@ struct lux_cal_parameter{
 
 	long cw_b_gain;
 	long other_b_gain;
-}lux_cal_parameter;
+} lux_cal_parameter;
 
-struct tp_lx_cal_parameter{
+struct tp_lx_cal_parameter {
 	long tp_module_id;
 	struct lux_cal_parameter  gold_lux_cal_parameter;
 	struct lux_cal_parameter  white_lux_cal_parameter;
 	struct lux_cal_parameter  black_lux_cal_parameter;
 	struct lux_cal_parameter  blue_lux_cal_parameter;
-}tp_lx_cal_parameter;
+} tp_lx_cal_parameter;
 
-struct tp_lx_cal_parameter tp_module_parameter[MODULE_MANUFACTURE_NUMBER] = {{.tp_module_id = 0x55},{.tp_module_id = 0x55},{.tp_module_id = 0x55}};
-
+struct tp_lx_cal_parameter tp_module_parameter[MODULE_MANUFACTURE_NUMBER] = {{.tp_module_id = 0x55}, {.tp_module_id = 0x55},{.tp_module_id = 0x55}};
 
 struct rgb_bh1745_data {
 	struct i2c_client *client;
@@ -209,22 +209,22 @@ static struct workqueue_struct *rgb_bh1745_workqueue = NULL;
 static int rgb_bh1745_init_client(struct i2c_client *client);
 static int als_polling_count=0;
 /*we use the unified the function for i2c write and read operation*/
-static int rgb_bh1745_i2c_write(struct i2c_client*client, u8 reg, u16 value,bool flag)
+static int rgb_bh1745_i2c_write(struct i2c_client *client, u8 reg, u16 value, bool flag)
 {
-	int err,loop;
+	int err, loop;
 
 	struct rgb_bh1745_data *data = i2c_get_clientdata(client);
 
 	loop = BH1745_I2C_RETRY_COUNT;
 	/*we give three times to repeat the i2c operation if i2c errors happen*/
-	while(loop) {
+	while (loop) {
 		mutex_lock(&data->update_lock);
 		/*0 is i2c_smbus_write_byte_data,1 is i2c_smbus_write_word_data*/
-		if(flag == BH1745_I2C_BYTE)
+		if (flag == BH1745_I2C_BYTE)
 		{
 			err = i2c_smbus_write_byte_data(client, reg, (u8)value);
 		}
-		else if(flag == BH1745_I2C_WORD)
+		else if (flag == BH1745_I2C_WORD)
 		{
 			err = i2c_smbus_write_word_data(client, reg, value);
 		}
@@ -235,7 +235,7 @@ static int rgb_bh1745_i2c_write(struct i2c_client*client, u8 reg, u16 value,bool
 			return -EINVAL;
 		}
 		mutex_unlock(&data->update_lock);
-		if(err < 0){
+		if (err < 0) {
 			loop--;
 			msleep(BH1745_I2C_RETRY_TIMEOUT);
 		}
@@ -243,29 +243,29 @@ static int rgb_bh1745_i2c_write(struct i2c_client*client, u8 reg, u16 value,bool
 			break;
 	}
 	/*after three times,we print the register and regulator value*/
-	if(loop == 0){
-		BH1745_ERR("%s,line %d:attention:i2c write err = %d\n",__func__,__LINE__,err);
+	if (loop == 0) {
+		BH1745_ERR("%s,line %d:attention:i2c write err = %d\n", __func__, __LINE__, err);
 	}
 
 	return err;
 }
 
-static int rgb_bh1745_i2c_read(struct i2c_client*client, u8 reg,bool flag)
+static int rgb_bh1745_i2c_read(struct i2c_client *client, u8 reg, bool flag)
 {
-	int err,loop;
+	int err, loop;
 
 	struct rgb_bh1745_data *data = i2c_get_clientdata(client);
 
 	loop = BH1745_I2C_RETRY_COUNT;
 	/*we give three times to repeat the i2c operation if i2c errors happen*/
-	while(loop) {
+	while (loop) {
 		mutex_lock(&data->update_lock);
 		/*0 is i2c_smbus_read_byte_data,1 is i2c_smbus_read_word_data*/
-		if(flag == BH1745_I2C_BYTE)
+		if (flag == BH1745_I2C_BYTE)
 		{
 			err = i2c_smbus_read_byte_data(client, reg);
 		}
-		else if(flag == BH1745_I2C_WORD)
+		else if (flag == BH1745_I2C_WORD)
 		{
 			err = i2c_smbus_read_word_data(client, reg);
 		}
@@ -276,7 +276,7 @@ static int rgb_bh1745_i2c_read(struct i2c_client*client, u8 reg,bool flag)
 			return -EINVAL;
 		}
 		mutex_unlock(&data->update_lock);
-		if(err < 0){
+		if (err < 0) {
 			loop--;
 			msleep(BH1745_I2C_RETRY_TIMEOUT);
 		}
@@ -284,8 +284,8 @@ static int rgb_bh1745_i2c_read(struct i2c_client*client, u8 reg,bool flag)
 			break;
 	}
 	/*after three times,we print the register and regulator value*/
-	if(loop == 0){
-		BH1745_ERR("%s,line %d:attention: i2c read err = %d,reg=0x%x\n",__func__,__LINE__,err,reg);
+	if (loop == 0) {
+		BH1745_ERR("%s,line %d:attention: i2c read err = %d,reg=0x%x\n", __func__, __LINE__, err, reg);
 	}
 
 	return err;
@@ -294,59 +294,60 @@ static int rgb_bh1745_i2c_read(struct i2c_client*client, u8 reg,bool flag)
 /*
 *	print the registers value with proper format
 */
-static int dump_reg_buf(struct rgb_bh1745_data *data,char *buf, int size,int enable)
+static int dump_reg_buf(struct rgb_bh1745_data *data, char *buf, int size, int enable)
 {
 	int i=0;
 
-	if(enable)
+	if (enable)
 		BH1745_INFO("[enable]");
 	else
 		BH1745_INFO("[disable]");
 	BH1745_INFO(" reg_buf= ");
-	for(i = 0;i < size; i++){
-		BH1745_INFO("0x%2x  ",buf[i]);
+	for (i = 0; i < size; i++) {
+		BH1745_INFO("0x%2x  ", buf[i]);
 	}
 	
 	BH1745_INFO("\n");
 	return 0;
 }
-static int rgb_bh1745_regs_debug_print(struct rgb_bh1745_data *data,int enable)
+
+static int rgb_bh1745_regs_debug_print(struct rgb_bh1745_data *data, int enable)
 {
-	int i=0;
+	int i = 0;
 	char reg_buf[BH1745_REG_LEN];
 	u8 reg = 0;
 	struct i2c_client *client = data->client;
 
 	/* read registers[0x0~0x1a] value*/
-	for(i = 0; i < BH1745_REG_LEN; i++ )
+	for (i = 0; i < BH1745_REG_LEN; i++ )
 	{
-		reg = 0x50+i;
+		reg = 0x50 + i;
 		reg_buf[i] = rgb_bh1745_i2c_read(client, reg, BH1745_I2C_BYTE);
 
-		if(reg_buf[i] <0){
-			BH1745_ERR("%s,line %d:read %d reg failed\n",__func__,__LINE__,i);
-			return reg_buf[i] ;
+		if (reg_buf[i] <0) {
+			BH1745_ERR("%s,line %d:read %d reg failed\n", __func__, __LINE__, i);
+			return reg_buf[i];
 		}
 	}
 
 	/* print the registers[0x0~0x1a] value in proper format*/
-	dump_reg_buf(data,reg_buf,BH1745_REG_LEN,enable);
+	dump_reg_buf(data, reg_buf, BH1745_REG_LEN, enable);
 
 	return 0;
 }
 
 static void rgb_bh1745_dump_register(struct i2c_client *client)
 {
-	int sys_ctl,mode_ctl1,mode_ctl2,mode_ctl3,irq_ctl,pers;
-	sys_ctl = rgb_bh1745_i2c_read(client, BH1745_SYSTEMCONTROL,BH1745_I2C_BYTE);
-	mode_ctl1= rgb_bh1745_i2c_read(client, BH1745_MODECONTROL1,BH1745_I2C_BYTE);
-	mode_ctl2 =rgb_bh1745_i2c_read(client, BH1745_MODECONTROL2,BH1745_I2C_BYTE);
-	mode_ctl3=rgb_bh1745_i2c_read(client, BH1745_MODECONTROL3,BH1745_I2C_BYTE);
-	irq_ctl=rgb_bh1745_i2c_read(client, BH1745_INTERRUPT,BH1745_I2C_BYTE);
-	pers = rgb_bh1745_i2c_read(client, BH1745_PERSISTENCE,BH1745_I2C_BYTE);
+	int sys_ctl, mode_ctl1, mode_ctl2, mode_ctl3, irq_ctl, pers;
+	sys_ctl = rgb_bh1745_i2c_read(client, BH1745_SYSTEMCONTROL, BH1745_I2C_BYTE);
+	mode_ctl1 = rgb_bh1745_i2c_read(client, BH1745_MODECONTROL1, BH1745_I2C_BYTE);
+	mode_ctl2 = rgb_bh1745_i2c_read(client, BH1745_MODECONTROL2, BH1745_I2C_BYTE);
+	mode_ctl3 = rgb_bh1745_i2c_read(client, BH1745_MODECONTROL3, BH1745_I2C_BYTE);
+	irq_ctl = rgb_bh1745_i2c_read(client, BH1745_INTERRUPT, BH1745_I2C_BYTE);
+	pers = rgb_bh1745_i2c_read(client, BH1745_PERSISTENCE, BH1745_I2C_BYTE);
 
-	BH1745_INFO("%s,line %d:sys_ctl = 0x%x,mode_ctl1=0x%x,mode_ctl2=0x%x\n",__func__,__LINE__,sys_ctl,mode_ctl1,mode_ctl2);
-	BH1745_INFO("%s,line %d:mode_ctl3 = 0x%x,irq_ctl=0x%x,pers=0x%x\n",__func__,__LINE__,mode_ctl3,irq_ctl,pers);
+	BH1745_INFO("%s,line %d:sys_ctl = 0x%x,mode_ctl1=0x%x,mode_ctl2=0x%x\n", __func__, __LINE__, sys_ctl, mode_ctl1, mode_ctl2);
+	BH1745_INFO("%s,line %d:mode_ctl3 = 0x%x,irq_ctl=0x%x,pers=0x%x\n", __func__, __LINE__, mode_ctl3, irq_ctl, pers);
 }
 
 /******************************************************************************
@@ -360,11 +361,11 @@ static int rgb_bh1745_driver_reset(struct i2c_client *client)
 
     /* set soft ware reset */
     ret = rgb_bh1745_i2c_write(client, BH1745_SYSTEMCONTROL, (SW_RESET | INT_RESET), BH1745_I2C_BYTE);
-	if (ret < 0){
-		BH1745_ERR("%s,line %d: i2c error,rgb_bh1745_driver_reset fail %d\n",__func__,__LINE__,ret);
+	if (ret < 0) {
+		BH1745_ERR("%s,line %d: i2c error,rgb_bh1745_driver_reset fail %d\n", __func__, __LINE__, ret);
 		return ret;
 	}
-	BH1745_FLOW("%s,line %d:rgb_bh1745 reset\n",__func__,__LINE__);
+	BH1745_FLOW("%s,line %d:rgb_bh1745 reset\n", __func__, __LINE__);
 	/*wait for device reset sucess*/
 	mdelay(1);
     return (ret);
@@ -375,11 +376,11 @@ static int rgb_bh1745_set_enable(struct i2c_client *client, int enable)
 	int ret;
 
 	ret = rgb_bh1745_i2c_write(client, BH1745_MODECONTROL2, enable,BH1745_I2C_BYTE);
-	if (ret < 0){
-		BH1745_ERR("%s,line %d:i2c error,enable = %d\n",__func__,__LINE__,enable);
+	if (ret < 0) {
+		BH1745_ERR("%s,line %d:i2c error,enable = %d\n", __func__, __LINE__, enable);
 		return ret;
 	}
-	BH1745_FLOW("%s,line %d:rgb_bh1745 enable = %d\n",__func__,__LINE__,enable);
+	BH1745_FLOW("%s,line %d:rgb_bh1745 enable = %d\n", __func__, __LINE__, enable);
 	return ret;
 }
 
@@ -388,14 +389,14 @@ static int rgb_bh1745_set_pers(struct i2c_client *client, int pers)
 	struct rgb_bh1745_data *data = i2c_get_clientdata(client);
 	int ret;
 
-	ret = rgb_bh1745_i2c_write(client,BH1745_PERSISTENCE, pers,BH1745_I2C_BYTE);
+	ret = rgb_bh1745_i2c_write(client, BH1745_PERSISTENCE, pers, BH1745_I2C_BYTE);
 	if (ret < 0){
-		BH1745_ERR("%s,line %d:i2c error,pers = %d\n",__func__,__LINE__,pers);
+		BH1745_ERR("%s,line %d:i2c error,pers = %d\n", __func__, __LINE__, pers);
 		return ret;
 	}
 
 	data->pers = pers;
-	BH1745_FLOW("%s,line %d:rgb_bh1745 pers = %d\n",__func__,__LINE__,pers);
+	BH1745_FLOW("%s,line %d:rgb_bh1745 pers = %d\n", __func__, __LINE__, pers);
 	return ret;
 }
 
@@ -404,14 +405,14 @@ static int rgb_bh1745_set_interrupt(struct i2c_client *client, int irq_control)
 	struct rgb_bh1745_data *data = i2c_get_clientdata(client);
 	int ret;
 
-	ret = rgb_bh1745_i2c_write(client,BH1745_INTERRUPT, irq_control,BH1745_I2C_BYTE);
-	if (ret < 0){
-		BH1745_ERR("%s,line %d:i2c error,irq_control = %d\n",__func__,__LINE__,irq_control);
+	ret = rgb_bh1745_i2c_write(client, BH1745_INTERRUPT, irq_control, BH1745_I2C_BYTE);
+	if (ret < 0) {
+		BH1745_ERR("%s,line %d:i2c error,irq_control = %d\n", __func__, __LINE__, irq_control);
 		return ret;
 	}
 
 	data->irq_control = irq_control;
-	BH1745_FLOW("%s,line %d:rgb_bh1745 irq_control = %d\n",__func__,__LINE__,irq_control);
+	BH1745_FLOW("%s,line %d:rgb_bh1745 irq_control = %d\n", __func__, __LINE__, irq_control);
 	return ret;
 }
 
@@ -420,14 +421,14 @@ static int rgb_bh1745_set_control(struct i2c_client *client, int control)
 	struct rgb_bh1745_data *data = i2c_get_clientdata(client);
 	int ret;
 
-	ret = rgb_bh1745_i2c_write(client,BH1745_MODECONTROL3, control,BH1745_I2C_BYTE);
-	if (ret < 0){
-		BH1745_ERR("%s,line %d:i2c error,control = %d\n",__func__,__LINE__,control);
+	ret = rgb_bh1745_i2c_write(client, BH1745_MODECONTROL3, control, BH1745_I2C_BYTE);
+	if (ret < 0) {
+		BH1745_ERR("%s,line %d:i2c error,control = %d\n", __func__, __LINE__, control);
 		return ret;
 	}
 
 	data->control = control;
-	BH1745_FLOW("%s,line %d:rgb_bh1745 control = %d\n",__func__,__LINE__,control);
+	BH1745_FLOW("%s,line %d:rgb_bh1745 control = %d\n", __func__, __LINE__, control);
 	return ret;
 }
 
@@ -436,14 +437,14 @@ static int rgb_bh1745_set_measure_time(struct i2c_client *client, int measure_ti
 	struct rgb_bh1745_data *data = i2c_get_clientdata(client);
 	int ret;
 
-	ret = rgb_bh1745_i2c_write(client,BH1745_MODECONTROL1, measure_time,BH1745_I2C_BYTE);
-	if (ret < 0){
-		BH1745_ERR("%s,line %d:i2c error,measure_time = %d\n",__func__,__LINE__,measure_time);
+	ret = rgb_bh1745_i2c_write(client, BH1745_MODECONTROL1, measure_time, BH1745_I2C_BYTE);
+	if (ret < 0) {
+		BH1745_ERR("%s,line %d:i2c error,measure_time = %d\n", __func__, __LINE__, measure_time);
 		return ret;
 	}
 
 	data->measure_time = measure_time;
-	BH1745_FLOW("%s,line %d:rgb_bh1745 measure_time = %d\n",__func__,__LINE__,measure_time);
+	BH1745_FLOW("%s,line %d:rgb_bh1745 measure_time = %d\n", __func__, __LINE__, measure_time);
 	return ret;
 }
 
@@ -469,18 +470,18 @@ static int rgb_bh1745_calc_lx(struct i2c_client *client, struct rgb_bh1745_rgb_d
 		return lx;
 	}
 
-	if(data->green < 1)
+	if (data->green < 1)
 	{
 		lx_tmp = 0;
 	}
-	else if((data->clear * JUDEG_COEFF) <( cofficient_judge*data->green))
+	else if ((data->clear * JUDEG_COEFF) < ( cofficient_judge * data->green))
 	{
-		lx_tmp = data->green*cofficient_green[0] + data->red *cofficient_red[0];
+		lx_tmp = data->green * cofficient_green[0] + data->red * cofficient_red[0];
 		BH1745_FLOW("%s,line %d:lx_temp 1: %lld\n", __func__, __LINE__, lx_tmp);
 	}
 	else
 	{
-		lx_tmp = data->green*cofficient_green[1]+data->red *cofficient_red[1];
+		lx_tmp = data->green * cofficient_green[1] + data->red * cofficient_red[1];
 		BH1745_FLOW("%s,line %d:lx_temp 1: %lld\n", __func__, __LINE__, lx_tmp);
 	}
 
@@ -489,11 +490,11 @@ static int rgb_bh1745_calc_lx(struct i2c_client *client, struct rgb_bh1745_rgb_d
 	if (lx_tmp < 0)
 		lx_tmp = 0;
 
-	lx= lx_tmp/(gain/16)/(itime/160)/1000;
+	lx = lx_tmp / (gain / 16) / (itime / 160) / 1000;
 
 	if (lx < 200)
 	{
-		if(!dim_flag)
+		if (!dim_flag)
 		{
 			ret = rgb_bh1745_i2c_write(client,BH1745_MODECONTROL1, MEASURE_640MS , BH1745_I2C_BYTE);
 			if (ret < 0)
@@ -504,7 +505,7 @@ static int rgb_bh1745_calc_lx(struct i2c_client *client, struct rgb_bh1745_rgb_d
 	}
 	else
 	{
-		if(dim_flag)
+		if (dim_flag)
 		{
 			ret = rgb_bh1745_i2c_write(client,BH1745_MODECONTROL1, MEASURE_320MS , BH1745_I2C_BYTE);
 			if (ret < 0)
@@ -527,26 +528,26 @@ static int rgb_bh1745_calc_lx(struct i2c_client *client, struct rgb_bh1745_rgb_d
 static void rgb_bh1745_als_polling_work_handler(struct work_struct *work)
 {
 	struct rgb_bh1745_data *data = container_of(work, struct rgb_bh1745_data,als_dwork);
-	struct i2c_client *client=data->client;
-	int  luxValue=0;
+	struct i2c_client *client = data->client;
+	int luxValue = 0;
 	unsigned char gain = 0;
 	unsigned short time = 0;
 	int tmp = 0;
 
-	unsigned char lux_is_valid=1;
+	unsigned char lux_is_valid = 1;
 	int ret;
 	ret = rgb_bh1745_i2c_read(client, BH1745_MODECONTROL2, BH1745_I2C_WORD);
 	if (ret < 0){
 		BH1745_ERR("%s,line %d i2c read fail, read BH1745_MODECONTROL2 error\n",__func__,__LINE__);
 		goto restart_timer;
 	}
-	if (ret &= MODECONTROL2_VALID){
-		data->rgb_data.red      = rgb_bh1745_i2c_read(client, BH1745_RED_DATA_LSB, BH1745_I2C_WORD);
-		data->rgb_data.green  = rgb_bh1745_i2c_read(client, BH1745_GREEN_DATA_LSB, BH1745_I2C_WORD);
-		data->rgb_data.blue     = rgb_bh1745_i2c_read(client, BH1745_BLUE_DATA_LSB, BH1745_I2C_WORD);
-		data->rgb_data.clear    = rgb_bh1745_i2c_read(client, BH1745_CLEAR_DATA_LSB, BH1745_I2C_WORD);
-	}else {
-		BH1745_FLOW("%s,line %d the data is not update\n",__func__,__LINE__);
+	if (ret &= MODECONTROL2_VALID) {
+		data->rgb_data.red = rgb_bh1745_i2c_read(client, BH1745_RED_DATA_LSB, BH1745_I2C_WORD);
+		data->rgb_data.green = rgb_bh1745_i2c_read(client, BH1745_GREEN_DATA_LSB, BH1745_I2C_WORD);
+		data->rgb_data.blue = rgb_bh1745_i2c_read(client, BH1745_BLUE_DATA_LSB, BH1745_I2C_WORD);
+		data->rgb_data.clear = rgb_bh1745_i2c_read(client, BH1745_CLEAR_DATA_LSB, BH1745_I2C_WORD);
+	} else {
+		BH1745_FLOW("%s,line %d the data is not update\n", __func__, __LINE__);
 		goto restart_timer;
 	}
 
@@ -558,7 +559,7 @@ static void rgb_bh1745_als_polling_work_handler(struct work_struct *work)
 		data->rgb_data.blue,
 		data->rgb_data.clear);
 
-	if((data->rgb_data.red < 0) 
+	if ((data->rgb_data.red < 0) 
 		|| (data->rgb_data.green < 0)
 		|| (data->rgb_data.blue < 0)
 		|| (data->rgb_data.clear < 0))
@@ -578,15 +579,15 @@ static void rgb_bh1745_als_polling_work_handler(struct work_struct *work)
 	{
 
 		tmp = rgb_bh1745_i2c_read(client, BH1745_MODECONTROL1, BH1745_I2C_BYTE);
-		if (tmp < 0){
-			BH1745_ERR("%s:%d i2c read error tmp = %d\n", __func__,__LINE__,tmp);
+		if (tmp < 0) {
+			BH1745_ERR("%s:%d i2c read error tmp = %d\n", __func__, __LINE__, tmp);
 			tmp = 0;
 		}
 		tmp = tmp & 0x7;
 		time = bh1745_atime[tmp];
 		tmp = rgb_bh1745_i2c_read(client, BH1745_MODECONTROL2, BH1745_I2C_BYTE);
-		if (tmp < 0){
-			BH1745_ERR("%s:%d i2c read error tmp = %d\n", __func__,__LINE__,tmp);
+		if (tmp < 0) {
+			BH1745_ERR("%s:%d i2c read error tmp = %d\n", __func__, __LINE__, tmp);
 			tmp = 0;
 		}
 		tmp = tmp & 0x3;
@@ -596,25 +597,25 @@ static void rgb_bh1745_als_polling_work_handler(struct work_struct *work)
 
 	if (luxValue >= 0)
 	{
-		luxValue = luxValue < BH1745_LUX_MAX? luxValue : BH1745_LUX_MAX;
+		luxValue = luxValue < BH1745_LUX_MAX ? luxValue : BH1745_LUX_MAX;
 		data->als_prev_lux = luxValue;
 	}
 	else
 	{
-		BH1745_ERR("%s:%d cal lux error, luxValue = %d lux_is_valid =%d\n",__FUNCTION__,__LINE__,luxValue,lux_is_valid);
+		BH1745_ERR("%s:%d cal lux error, luxValue = %d lux_is_valid =%d\n", __FUNCTION__, __LINE__, luxValue, lux_is_valid);
 		/* don't report, this is invalid lux value */
 		lux_is_valid = 0;
 		luxValue = data->als_prev_lux;
 	}
-	if( als_polling_count < 5 )
+	if ( als_polling_count < 5 )
 	{
-		if(luxValue == BH1745_LUX_MAX)
+		if (luxValue == BH1745_LUX_MAX)
 		{
-			luxValue = luxValue - als_polling_count%2;
+			luxValue = luxValue - als_polling_count % 2;
 		}
 		else
 		{
-			luxValue = luxValue + als_polling_count%2;
+			luxValue = luxValue + als_polling_count % 2;
 		}
 		als_polling_count++;
 	}
@@ -623,13 +624,12 @@ static void rgb_bh1745_als_polling_work_handler(struct work_struct *work)
 		/* report the lux level */
 		input_report_abs(data->input_dev_als, ABS_MISC, luxValue);
 		input_sync(data->input_dev_als);
-		BH1745_FLOW("%s,line %d:rgb bh1745 lux=%d\n",__func__,__LINE__,luxValue);
+		BH1745_FLOW("%s,line %d:rgb bh1745 lux=%d\n", __func__, __LINE__, luxValue);
 	}
 	/* restart timer */
 	/* start a work after 200ms */
 restart_timer:
-	if (0 != hrtimer_start(&data->timer,
-							ktime_set(0, data->als_poll_delay * 1000000), HRTIMER_MODE_REL) )
+	if (0 != hrtimer_start(&data->timer, ktime_set(0, data->als_poll_delay * 1000000), HRTIMER_MODE_REL))
 	{
 		BH1745_ERR("%s: hrtimer_start fail! nsec=%d\n", __func__, data->als_poll_delay);
 	}
@@ -643,7 +643,7 @@ Description   :  hrtimer_start call back function,
 *****************************************************************/
 static enum hrtimer_restart rgb_bh1745_als_timer_func(struct hrtimer *timer)
 {
-	struct rgb_bh1745_data* data = container_of(timer,struct rgb_bh1745_data,timer);
+	struct rgb_bh1745_data* data = container_of(timer, struct rgb_bh1745_data, timer);
 	
 	queue_work(rgb_bh1745_workqueue, &data->als_dwork);
 	return HRTIMER_NORESTART;
@@ -657,17 +657,17 @@ static int rgb_bh1745_enable_als_sensor(struct i2c_client *client, int val)
 	struct rgb_bh1745_platform_data *pdata = data->platform_data;
 	int ret;
 
-	BH1745_FLOW("%s,line %d:enable als val=%d\n",__func__,__LINE__,val);
+	BH1745_FLOW("%s,line %d:enable als val=%d\n", __func__, __LINE__, val);
 
 	mutex_lock(&data->single_lock);
 	if (val == 1) {
 		/* turn on light  sensor */
-		BH1745_INFO("%s:%d pdata->panel_id = %d pdata->tp_color = %d\n", __func__,__LINE__,pdata->panel_id,pdata->tp_color);
-		BH1745_INFO("%s:%d lux cal parameter from dtsi  is judge[%ld], red[%ld], red[%ld], green[%ld] , green[%ld], blue[%ld],  blue[%ld]\n", __FUNCTION__, __LINE__,cofficient_judge, cofficient_red[0],cofficient_red[1],cofficient_green[0],cofficient_green[1],cofficient_blue[0],cofficient_blue[1]);
+		BH1745_INFO("%s:%d pdata->panel_id = %d pdata->tp_color = %d\n", __func__, __LINE__, pdata->panel_id, pdata->tp_color);
+		BH1745_INFO("%s:%d lux cal parameter from dtsi  is judge[%ld], red[%ld], red[%ld], green[%ld] , green[%ld], blue[%ld],  blue[%ld]\n", __FUNCTION__, __LINE__, cofficient_judge, cofficient_red[0], cofficient_red[1], cofficient_green[0], cofficient_green[1], cofficient_blue[0], cofficient_blue[1]);
 		if (data->enable_als_sensor == 0) {
 			/* Power on and initalize the device */
 			if (pdata->power_on)
-				pdata->power_on(true,data);
+				pdata->power_on(true, data);
 
 			ret = rgb_bh1745_init_client(client);
 			if (ret) {
@@ -675,9 +675,10 @@ static int rgb_bh1745_enable_als_sensor(struct i2c_client *client, int val)
 				mutex_unlock(&data->single_lock);
 				return ret;
 			}
-			als_polling_count=0;
+
+			als_polling_count = 0;
 			data->enable_als_sensor = 1;
-			data->enable = (data->enable)|RGBC_EN_ON;
+			data->enable = (data->enable) | RGBC_EN_ON;
 			rgb_bh1745_set_enable(client, data->enable);
 			BH1745_INFO("%s: line:%d enable als sensor,data->enable=0x%x\n", __func__, __LINE__, data->enable);
 			/* enable als sensor, start data report hrtimer */
@@ -686,28 +687,28 @@ static int rgb_bh1745_enable_als_sensor(struct i2c_client *client, int val)
 				BH1745_ERR("%s: hrtimer_start fail! nsec=%d\n", __func__, data->als_poll_delay);
 			}
 		}
+
 	} else {
 		/*
 		 * turn off light sensor
 		 */
-		 if(data->enable_als_sensor == 1)
+		 if (data->enable_als_sensor == 1)
 		 {
 			data->enable_als_sensor = 0;
-			data->enable =  ADC_GAIN_X16|RGBC_EN_OFF;
+			data->enable =  ADC_GAIN_X16 | RGBC_EN_OFF;
 			rgb_bh1745_set_enable(client, data->enable);
 
-			BH1745_INFO("%s: line:%d,disable rgb bh1745 als sensor,data->enable = 0x%x\n", __func__, __LINE__,data->enable);
+			BH1745_INFO("%s: line:%d,disable rgb bh1745 als sensor,data->enable = 0x%x\n", __func__, __LINE__, data->enable);
 			/* disable als sensor, cancne data report hrtimer */
 			hrtimer_cancel(&data->timer);
 			cancel_work_sync(&data->als_dwork);
 			/*avoid hrtimer restart in data->als_dwork*/
 			hrtimer_cancel(&data->timer);
 		 }
-
 	}
 	/* Vote off  regulators if both light and prox sensor are off */
-	if ((data->enable_als_sensor == 0)&&(pdata->power_on)){
-		pdata->power_on(false,data);
+	if ((data->enable_als_sensor == 0) && (pdata->power_on)) {
+		pdata->power_on(false, data);
 	}
 	mutex_unlock(&data->single_lock);
 	BH1745_FLOW("%s: line:%d,enable als sensor success\n", __func__, __LINE__);
@@ -720,7 +721,7 @@ static int rgb_bh1745_enable_als_sensor(struct i2c_client *client, int val)
 		unsigned int enable)
 {
 	int ret = 0;
-	static int als_enalbe_count=0;
+	static int als_enalbe_count = 0;
 	
 
 	struct rgb_bh1745_data *data = container_of(sensors_cdev,struct rgb_bh1745_data, als_cdev);
@@ -730,24 +731,23 @@ static int rgb_bh1745_enable_als_sensor(struct i2c_client *client, int val)
 		BH1745_ERR("%s: invalid value(%d)\n", __func__, enable);
 		return -EINVAL;
 	}
-	BH1745_FLOW("%s,line %d:rgb bh1745 als enable=%d\n",__func__,__LINE__,enable);
+	BH1745_FLOW("%s,line %d:rgb bh1745 als enable=%d\n", __func__, __LINE__, enable);
 
 	/*for debug and print registers value when enable/disable the als every time*/
-	if(enable == 0)
+	if (enable == 0)
 	{
 		rgb_bh1745_enable_als_sensor(data->client, enable);
 
-		if(rgb_bh1745_debug_mask >= 1){
+		if (rgb_bh1745_debug_mask >= 1) {
 			BH1745_FLOW("attention:before als_disable %d times\n", als_enalbe_count);
-			rgb_bh1745_regs_debug_print(data,enable);
+			rgb_bh1745_regs_debug_print(data, enable);
 		}
 		rgb_bh1745_dump_register(client);
-	}else{
-
+	} else {
 		rgb_bh1745_enable_als_sensor(data->client, enable);
 
-		if(rgb_bh1745_debug_mask >= 1){
-			BH1745_FLOW("attention: after als_enable %d times\n",++als_enalbe_count);
+		if (rgb_bh1745_debug_mask >= 1){
+			BH1745_FLOW("attention: after als_enable %d times\n", ++als_enalbe_count);
 		}
 		rgb_bh1745_dump_register(client);		
 	 }
@@ -766,7 +766,7 @@ static int rgb_bh1745_set_als_poll_delay(struct i2c_client *client,
 		val = 10;
 	data->als_poll_delay = 320;
 
-	BH1745_INFO("%s,line %d:poll delay %d",__func__,__LINE__, data->als_poll_delay);
+	BH1745_INFO("%s,line %d:poll delay %d", __func__, __LINE__, data->als_poll_delay);
 
 	/*
 	 * If work is already scheduled then subsequent schedules will not
@@ -776,7 +776,7 @@ static int rgb_bh1745_set_als_poll_delay(struct i2c_client *client,
 	hrtimer_cancel(&data->timer);
 	ret = hrtimer_start(&data->timer, ktime_set(0, data->als_poll_delay * 1000000), HRTIMER_MODE_REL);
 	if (ret != 0) {
-		BH1745_ERR("%s,line%d: hrtimer_start fail! nsec=%d\n", __func__, __LINE__,data->als_poll_delay);
+		BH1745_ERR("%s,line%d: hrtimer_start fail! nsec=%d\n", __func__, __LINE__, data->als_poll_delay);
 		return ret;
 	}
 	return 0;
@@ -796,9 +796,9 @@ static ssize_t rgb_bh1745_show_red_data(struct device *dev,
 	struct i2c_client *client = to_i2c_client(dev);
 	int red_data;
 
-	red_data = rgb_bh1745_i2c_read(client,BH1745_RED_DATA_LSB,BH1745_I2C_WORD);
+	red_data = rgb_bh1745_i2c_read(client, BH1745_RED_DATA_LSB, BH1745_I2C_WORD);
 
-	return snprintf(buf,32,"%d\n", red_data);
+	return snprintf(buf, 32, "%d\n", red_data);
 }
 
 static DEVICE_ATTR(red_data, S_IRUGO, rgb_bh1745_show_red_data, NULL);
@@ -809,7 +809,7 @@ static ssize_t rgb_bh1745_show_green_data(struct device *dev,
 	struct i2c_client *client = to_i2c_client(dev);
 	int green_data;
 
-	green_data = rgb_bh1745_i2c_read(client,BH1745_GREEN_DATA_LSB,BH1745_I2C_WORD);
+	green_data = rgb_bh1745_i2c_read(client, BH1745_GREEN_DATA_LSB, BH1745_I2C_WORD);
 
 	return snprintf(buf,32, "%d\n", green_data);
 }
@@ -822,13 +822,13 @@ static ssize_t rgb_bh1745_show_blue_data(struct device *dev,
 	struct i2c_client *client = to_i2c_client(dev);
 	int blue_data;
 
-	blue_data = rgb_bh1745_i2c_read(client, BH1745_BLUE_DATA_LSB,BH1745_I2C_WORD);
-	if(blue_data <0){
-		BH1745_ERR("%s,line %d:read blue_data failed\n",__func__,__LINE__);
+	blue_data = rgb_bh1745_i2c_read(client, BH1745_BLUE_DATA_LSB, BH1745_I2C_WORD);
+	if (blue_data < 0) {
+		BH1745_ERR("%s,line %d:read blue_data failed\n", __func__, __LINE__);
 	}
 
- 	return snprintf(buf,32, "%d\n", blue_data);
- }
+ 	return snprintf(buf, 32, "%d\n", blue_data);
+}
 
 static DEVICE_ATTR(blue_data, S_IRUGO, rgb_bh1745_show_blue_data, NULL);
 
@@ -839,11 +839,11 @@ static ssize_t rgb_bh1745_show_clear_data(struct device *dev,
 	int clear_data;
 
 	clear_data = rgb_bh1745_i2c_read(client, BH1745_CLEAR_DATA_LSB, BH1745_I2C_WORD);
-	if(clear_data <0){
-		BH1745_ERR("%s,line %d:read clear_data failed\n",__func__,__LINE__);
+	if (clear_data < 0) {
+		BH1745_ERR("%s,line %d:read clear_data failed\n", __func__, __LINE__);
 	}
 
- 	return snprintf(buf,32, "%d\n", clear_data);
+ 	return snprintf(buf, 32, "%d\n", clear_data);
  }
 
 static DEVICE_ATTR(clear_data, S_IRUGO, rgb_bh1745_show_clear_data, NULL);
@@ -869,46 +869,46 @@ static ssize_t rgb_bh1745_write_reg(struct device *dev, struct device_attribute 
 	input_str = kzalloc(buf_len, GFP_KERNEL);
 	if (!input_str)
 	{
-		BH1745_ERR("%s:kmalloc fail!\n",__func__);
+		BH1745_ERR("%s:kmalloc fail!\n", __func__);
 		return -ENOMEM;
 	}
 
-	snprintf(input_str, 10,"%s", buf);
+	snprintf(input_str, 10, "%s", buf);
 	/*Split the string when encounter "|", for example "0x08|0x12" will be splited "0x18" "0x12" */
-	strtok=strsep(&input_str, "|");
-	if(strtok!=NULL)
+	strtok = strsep(&input_str, "|");
+	if (strtok != NULL)
 	{
 		addr_lenth = strlen(strtok);
-		memcpy(reg_addr_str,strtok,((addr_lenth > (val_len_max))?(val_len_max):addr_lenth));
+		memcpy(reg_addr_str, strtok, ((addr_lenth > (val_len_max)) ? (val_len_max) : addr_lenth));
 	}
 	else
 	{
-		BH1745_ERR("%s: buf name Invalid:%s", __func__,buf);
+		BH1745_ERR("%s: buf name Invalid:%s", __func__, buf);
 		goto parse_fail_exit;
 	}
-	strtok=strsep(&input_str, "|");
-	if(strtok!=NULL)
+	strtok = strsep(&input_str, "|");
+	if (strtok != NULL)
 	{
 		value_lenth = strlen(strtok);
-		memcpy(reg_val_str,strtok,((value_lenth > (val_len_max))?(val_len_max):value_lenth));
+		memcpy(reg_val_str, strtok, ((value_lenth > (val_len_max)) ? (val_len_max) : value_lenth));
 	}
 	else
 	{
-		BH1745_ERR("%s: buf value Invalid:%s", __func__,buf);
+		BH1745_ERR("%s: buf value Invalid:%s", __func__, buf);
 		goto parse_fail_exit;
 	}
 	/* transform string to long int */
-	ret = kstrtol(reg_addr_str,16,&reg_addr);
-	if(ret)
+	ret = kstrtol(reg_addr_str, 16, &reg_addr);
+	if (ret)
 		goto parse_fail_exit;
 
-	ret = kstrtol(reg_val_str,16,&reg_val);
-	if(ret)
+	ret = kstrtol(reg_val_str, 16, &reg_val);
+	if (ret)
 		goto parse_fail_exit;
 
 	/* write the parsed value in the register*/
-	ret = rgb_bh1745_i2c_write(client,(char)reg_addr,(char)reg_val,BH1745_I2C_BYTE);
-	if (ret < 0){
+	ret = rgb_bh1745_i2c_write(client, (char)reg_addr, (char)reg_val, BH1745_I2C_BYTE);
+	if (ret < 0) {
 		goto parse_fail_exit;
 	}
 	return count;
@@ -931,18 +931,18 @@ static ssize_t rgb_bh1745_print_reg_buf(struct device *dev,
 	struct i2c_client *client = to_i2c_client(dev);
 
 	/* read all register value and print to user*/
-	for(i = 0; i < BH1745_REG_LEN; i++ )
+	for (i = 0; i < BH1745_REG_LEN; i++ )
 	{
-		reg[i] = rgb_bh1745_i2c_read(client, (0x50+i), BH1745_I2C_BYTE);
-		if(reg[i] <0){
-			BH1745_ERR("%s,line %d:read %d reg failed\n",__func__,__LINE__,i);
-			return reg[i] ;
+		reg[i] = rgb_bh1745_i2c_read(client, (0x50 + i), BH1745_I2C_BYTE);
+		if (reg[i] < 0) {
+			BH1745_ERR("%s,line %d:read %d reg failed\n", __func__, __LINE__, i);
+			return reg[i];
 		}
 	}
 
 	return snprintf(buf,512,"reg[0x0~0x8]=0x%2x, 0x%2x, 0x%2x, 0x%2x, 0x%2x, 0x%2x, 0x%2x, 0x%2x, 0x%2x\n"
 			"reg[0x09~0x11]0x%2x\n",
-			reg[0x00],reg[0x01],reg[0x02],reg[0x03],reg[0x04],reg[0x05],reg[0x06],reg[0x07],reg[0x08],reg[0x09]);
+			reg[0x00], reg[0x01], reg[0x02], reg[0x03], reg[0x04], reg[0x05], reg[0x06], reg[0x07], reg[0x08], reg[0x09]);
 }
 /*
  *	panel_id represent junda ofilm jdi.
@@ -961,20 +961,20 @@ static ssize_t write_module_tpcolor(struct device *dev, struct device_attribute 
 	int i;
 	err = kstrtoint(buf, 0, &val);
 	if (err < 0) {
-		BH1745_ERR("%s:%d kstrtoint failed\n", __func__,__LINE__);
+		BH1745_ERR("%s:%d kstrtoint failed\n", __func__, __LINE__);
 		return count;
 	}
 	valid_flag = val & 0xffff;
 	pdata->panel_id = (val >> 16) & 0xff;
 	pdata->tp_color = (val >> 24) & 0xff;
-	if (valid_flag != VALID_FLAG){
-		BH1745_ERR("%s:%d  valid flag error\n", __func__,__LINE__);
+	if (valid_flag != VALID_FLAG) {
+		BH1745_ERR("%s:%d  valid flag error\n", __func__, __LINE__);
 		return count;
 	}
-	BH1745_INFO("%s:%d panel_id = %d pdata->tp_color = %d\n", __FUNCTION__, __LINE__,pdata->panel_id,pdata->tp_color);
-	for (i = 0;i < MODULE_MANUFACTURE_NUMBER;i++){
-		if (pdata->panel_id == tp_module_parameter[i].tp_module_id){
-			if (pdata->tp_color == GOLD){
+	BH1745_INFO("%s:%d panel_id = %d pdata->tp_color = %d\n", __FUNCTION__, __LINE__, pdata->panel_id, pdata->tp_color);
+	for (i = 0; i < MODULE_MANUFACTURE_NUMBER; i++){
+		if (pdata->panel_id == tp_module_parameter[i].tp_module_id) {
+			if (pdata->tp_color == GOLD) {
 				cofficient_judge = tp_module_parameter[i].gold_lux_cal_parameter.judge;
 				cofficient_red[0] = tp_module_parameter[i].gold_lux_cal_parameter.cw_r_gain;
 				cofficient_red[1] = tp_module_parameter[i].gold_lux_cal_parameter.other_r_gain;
@@ -982,7 +982,7 @@ static ssize_t write_module_tpcolor(struct device *dev, struct device_attribute 
 				cofficient_green[1] = tp_module_parameter[i].gold_lux_cal_parameter.other_g_gain;
 				cofficient_blue[0] = tp_module_parameter[i].gold_lux_cal_parameter.cw_b_gain;
 				cofficient_blue[1] = tp_module_parameter[i].gold_lux_cal_parameter.other_b_gain;
-			}else if (pdata->tp_color == WHITE){
+			} else if (pdata->tp_color == WHITE) {
 				cofficient_judge = tp_module_parameter[i].white_lux_cal_parameter.judge;
 				cofficient_red[0] = tp_module_parameter[i].white_lux_cal_parameter.cw_r_gain;
 				cofficient_red[1] = tp_module_parameter[i].white_lux_cal_parameter.other_r_gain;
@@ -990,7 +990,7 @@ static ssize_t write_module_tpcolor(struct device *dev, struct device_attribute 
 				cofficient_green[1] = tp_module_parameter[i].white_lux_cal_parameter.other_g_gain;
 				cofficient_blue[0] = tp_module_parameter[i].white_lux_cal_parameter.cw_b_gain;
 				cofficient_blue[1] = tp_module_parameter[i].white_lux_cal_parameter.other_b_gain;
-			}else if (pdata->tp_color == BLACK){
+			} else if (pdata->tp_color == BLACK) {
 				cofficient_judge = tp_module_parameter[i].black_lux_cal_parameter.judge;
 				cofficient_red[0] = tp_module_parameter[i].black_lux_cal_parameter.cw_r_gain;
 				cofficient_red[1] = tp_module_parameter[i].black_lux_cal_parameter.other_r_gain;
@@ -998,7 +998,7 @@ static ssize_t write_module_tpcolor(struct device *dev, struct device_attribute 
 				cofficient_green[1] = tp_module_parameter[i].black_lux_cal_parameter.other_g_gain;
 				cofficient_blue[0] = tp_module_parameter[i].black_lux_cal_parameter.cw_b_gain;
 				cofficient_blue[1] = tp_module_parameter[i].black_lux_cal_parameter.other_b_gain;
-			}else if (pdata->tp_color == BLUE){
+			} else if (pdata->tp_color == BLUE) {
 				cofficient_judge = tp_module_parameter[i].black_lux_cal_parameter.judge;
 				cofficient_red[0] = tp_module_parameter[i].black_lux_cal_parameter.cw_r_gain;
 				cofficient_red[1] = tp_module_parameter[i].black_lux_cal_parameter.other_r_gain;
@@ -1009,7 +1009,7 @@ static ssize_t write_module_tpcolor(struct device *dev, struct device_attribute 
 			}
 		}
 	}
-	BH1745_INFO("%s:%d lux cal  parameter from dtsi  is judge[%ld], red[%ld], red[%ld], green[%ld] , green[%ld], blue[%ld],  blue[%ld]\n", __FUNCTION__, __LINE__,cofficient_judge, cofficient_red[0],cofficient_red[1],cofficient_green[0],cofficient_green[1],cofficient_blue[0],cofficient_blue[1]);
+	BH1745_INFO("%s:%d lux cal  parameter from dtsi  is judge[%ld], red[%ld], red[%ld], green[%ld] , green[%ld], blue[%ld],  blue[%ld]\n", __FUNCTION__, __LINE__, cofficient_judge, cofficient_red[0], cofficient_red[1], cofficient_green[0], cofficient_green[1], cofficient_blue[0], cofficient_blue[1]);
 	return count;
 }
 static ssize_t read_tp_parameters(struct device *dev,
@@ -1052,9 +1052,11 @@ static ssize_t read_tp_parameters(struct device *dev,
 	tp_module_parameter[2].blue_lux_cal_parameter.judge,tp_module_parameter[2].blue_lux_cal_parameter.cw_r_gain,tp_module_parameter[2].blue_lux_cal_parameter.other_r_gain,
 	tp_module_parameter[2].blue_lux_cal_parameter.cw_g_gain,tp_module_parameter[2].blue_lux_cal_parameter.other_g_gain,tp_module_parameter[2].blue_lux_cal_parameter.cw_b_gain,tp_module_parameter[2].blue_lux_cal_parameter.other_b_gain);
 }
-static DEVICE_ATTR(dump_reg ,S_IRUGO|S_IWUSR|S_IWGRP, rgb_bh1745_print_reg_buf, rgb_bh1745_write_reg);
-static DEVICE_ATTR(module_tpcolor ,S_IRUGO|S_IWUSR, NULL, write_module_tpcolor);
-static DEVICE_ATTR(dump_tp_parameters ,S_IRUGO, read_tp_parameters, NULL);
+
+static DEVICE_ATTR(dump_reg, S_IRUGO | S_IWUSR | S_IWGRP, rgb_bh1745_print_reg_buf, rgb_bh1745_write_reg);
+static DEVICE_ATTR(module_tpcolor, S_IRUGO | S_IWUSR, NULL, write_module_tpcolor);
+static DEVICE_ATTR(dump_tp_parameters, S_IRUGO, read_tp_parameters, NULL);
+
 static struct attribute *rgb_bh1745_attributes[] = {
 	&dev_attr_red_data.attr,
 	&dev_attr_green_data.attr,
@@ -1077,7 +1079,7 @@ static int rgb_bh1745_read_device_id(struct i2c_client *client)
 {
 	int id;
 	int err;
-	id    = rgb_bh1745_i2c_read(client, BH1745_SYSTEMCONTROL, BH1745_I2C_BYTE);
+	id = rgb_bh1745_i2c_read(client, BH1745_SYSTEMCONTROL, BH1745_I2C_BYTE);
 	id &= 0x3f;
 	if (id == 0x0b) {
 		BH1745_INFO("%s: ROHM BH1745\n", __func__);
@@ -1098,25 +1100,24 @@ static int rgb_bh1745_init_client(struct i2c_client *client)
 	int err;
 
 	
-	data->enable = ADC_GAIN_X16|RGBC_EN_OFF;
+	data->enable = ADC_GAIN_X16 | RGBC_EN_OFF;
 	err = rgb_bh1745_set_enable(client, data->enable);
 	if (err < 0)
 	{
-		BH1745_ERR("%s,line%d:rgb_bh1745_set_enable FAIL ",__func__,__LINE__);
+		BH1745_ERR("%s,line%d:rgb_bh1745_set_enable FAIL ", __func__, __LINE__);
 		return err;
 	}
 
 	err = rgb_bh1745_set_interrupt(client, BH1745_IRQ_DISABLE);
 	if (err < 0)
 	{
-		BH1745_ERR("%s,line%d:rgb_bh1745_set_interrupt FAIL ",__func__,__LINE__);
+		BH1745_ERR("%s,line%d:rgb_bh1745_set_interrupt FAIL ", __func__, __LINE__);
 		return err;
 	}
-
 	err = rgb_bh1745_set_measure_time(client, MEASURE_320MS);
 	if (err < 0)
 	{
-		BH1745_ERR("%s,line%d:rgb_bh1745_set_measure_time FAIL ",__func__,__LINE__);
+		BH1745_ERR("%s,line%d:rgb_bh1745_set_measure_time FAIL ", __func__, __LINE__);
 		return err;
 	}
 
@@ -1125,20 +1126,20 @@ static int rgb_bh1745_init_client(struct i2c_client *client)
 	err = rgb_bh1745_set_pers(client, BH1745_PPERS_1);
 	if (err < 0)
 	{
-		BH1745_ERR("%s,line%d:rgb_bh1745_set_pers FAIL ",__func__,__LINE__);
+		BH1745_ERR("%s,line%d:rgb_bh1745_set_pers FAIL ", __func__, __LINE__);
 		return err;
 	}
 
 	err = rgb_bh1745_set_control(client, MODE_CTL_FIX_VAL);
 	if (err < 0)
 	{
-		BH1745_ERR("%s,line%d:rgb_bh1745_set_pers FAIL ",__func__,__LINE__);
+		BH1745_ERR("%s,line%d:rgb_bh1745_set_pers FAIL ", __func__, __LINE__);
 		return err;
 	}
-	
 
 	return 0;
 }
+
 /*qualcom updated the regulator configure functions and we add them all*/
 static int sensor_regulator_configure(struct rgb_bh1745_data *data, bool on)
 {
@@ -1159,14 +1160,14 @@ static int sensor_regulator_configure(struct rgb_bh1745_data *data, bool on)
 		data->vdd = regulator_get(&data->client->dev, "vdd");
 		if (IS_ERR(data->vdd)) {
 			rc = PTR_ERR(data->vdd);
-			BH1745_ERR("%s,line%d:Regulator get failed vdd rc=%d\n",__func__,__LINE__, rc);
+			BH1745_ERR("%s,line%d:Regulator get failed vdd rc=%d\n", __func__, __LINE__, rc);
 			return rc;
 		}
 
 		if (regulator_count_voltages(data->vdd) > 0) {
 			rc = regulator_set_voltage(data->vdd, BH1745_VDD_MIN_UV, BH1745_VDD_MAX_UV);
 			if (rc) {
-				BH1745_ERR("%s,line%d:Regulator set failed vdd rc=%d\n",__func__,__LINE__,rc);
+				BH1745_ERR("%s,line%d:Regulator set failed vdd rc=%d\n", __func__, __LINE__, rc);
 				goto reg_vdd_put;
 			}
 		}
@@ -1174,7 +1175,7 @@ static int sensor_regulator_configure(struct rgb_bh1745_data *data, bool on)
 		data->vio = regulator_get(&data->client->dev, "vio");
 		if (IS_ERR(data->vio)) {
 			rc = PTR_ERR(data->vio);
-			BH1745_ERR("%s,line%d:Regulator get failed vio rc=%d\n",__func__,__LINE__, rc);
+			BH1745_ERR("%s,line%d:Regulator get failed vio rc=%d\n", __func__, __LINE__, rc);
 			goto reg_vdd_set;
 		}
 
@@ -1182,11 +1183,10 @@ static int sensor_regulator_configure(struct rgb_bh1745_data *data, bool on)
 			rc = regulator_set_voltage(data->vio,
 				BH1745_VIO_MIN_UV, BH1745_VIO_MAX_UV);
 			if (rc) {
-				BH1745_ERR("%s,line%d:Regulator set failed vio rc=%d\n",__func__,__LINE__, rc);
+				BH1745_ERR("%s,line%d:Regulator set failed vio rc=%d\n", __func__, __LINE__, rc);
 				goto reg_vio_put;
 			}
 		}
-
 	}
 
 	return 0;
@@ -1208,11 +1208,11 @@ static int rgb_bh1745_suspend(struct i2c_client *client, pm_message_t mesg)
 	BH1745_INFO("%s,line%d:BH1745 SUSPEND\n",__func__,__LINE__);
 
 	data->enable_als_state = data->enable_als_sensor;
-	if(data->enable_als_sensor){
-		BH1745_INFO("%s,line%d:BH1745 SUSPEND and disable als\n",__func__,__LINE__);
+	if (data->enable_als_sensor) {
+		BH1745_INFO("%s,line%d:BH1745 SUSPEND and disable als\n", __func__,  __LINE__);
 		rc = rgb_bh1745_enable_als_sensor(data->client, 0);
-		if (rc){
-			BH1745_ERR("%s,line%d:Disable rgb light sensor fail! rc=%d\n",__func__,__LINE__, rc);
+		if (rc) {
+			BH1745_ERR("%s,line%d:Disable rgb light sensor fail! rc=%d\n", __func__, __LINE__, rc);
 		}
 	}
 
@@ -1224,19 +1224,19 @@ static int rgb_bh1745_resume(struct i2c_client *client)
 	struct rgb_bh1745_data *data = i2c_get_clientdata(client);
 	int ret = 0;
 
-	BH1745_INFO("%s,line%d:BH1745 RESUME\n",__func__,__LINE__);
+	BH1745_INFO("%s,line%d:BH1745 RESUME\n", __func__, __LINE__);
 
 	if (data->enable_als_state) {
 		ret = rgb_bh1745_enable_als_sensor(data->client, 1);
-		if (ret){
-			BH1745_ERR("%s,line%d:enable rgb  light sensor fail! rc=%d\n",__func__,__LINE__, ret);
+		if (ret) {
+			BH1745_ERR("%s,line%d:enable rgb  light sensor fail! rc=%d\n", __func__, __LINE__, ret);
 		}
 	}
 
 	return 0;
 }
 /*pamameter subfunction of probe to reduce the complexity of probe function*/
-static int rgb_bh1745_sensorclass_init(struct rgb_bh1745_data *data,struct i2c_client* client)
+static int rgb_bh1745_sensorclass_init(struct rgb_bh1745_data *data, struct i2c_client* client)
 {
 	int err;
 	/* Register to sensors class */
@@ -1244,9 +1244,9 @@ static int rgb_bh1745_sensorclass_init(struct rgb_bh1745_data *data,struct i2c_c
 	data->als_cdev.sensors_enable = rgb_bh1745_als_set_enable;
 	data->als_cdev.sensors_poll_delay = rgb_bh1745_als_poll_delay;
 
-	err = sensors_classdev_register(&data ->input_dev_als ->dev, &data->als_cdev);
+	err = sensors_classdev_register(&data->input_dev_als->dev, &data->als_cdev);
 	if (err) {
-		BH1745_ERR("%s: Unable to register to sensors class: %d\n",__func__, err);
+		BH1745_ERR("%s: Unable to register to sensors class: %d\n", __func__, err);
 	}
 
 	return err;
@@ -1254,7 +1254,7 @@ static int rgb_bh1745_sensorclass_init(struct rgb_bh1745_data *data,struct i2c_c
 static void rgb_bh1745_parameter_init(struct rgb_bh1745_data *data)
 {
 	struct rgb_bh1745_platform_data *pdata = data->platform_data;
-	data->enable = ADC_GAIN_X16|RGBC_EN_OFF;	/* default mode is standard */
+	data->enable = ADC_GAIN_X16 | RGBC_EN_OFF;	/* default mode is standard */
 	data->enable_als_sensor = 0;	// default to 0
 	data->als_poll_delay = 320;	// default to 320ms
 	data->als_prev_lux = 300;
@@ -1308,7 +1308,7 @@ static int sensor_regulator_power_on(struct rgb_bh1745_data *data, bool on)
 		if (rc) {
 			BH1745_ERR("%s: Regulator vdd disable failed rc=%d\n", __func__, rc);
 			rc = regulator_enable(data->vdd);
-			BH1745_ERR("%s:Regulator vio re-enabled rc=%d\n",__func__, rc);
+			BH1745_ERR("%s:Regulator vio re-enabled rc=%d\n", __func__, rc);
 			/*
 			 * Successfully re-enable regulator.
 			 * Enter poweron delay and returns error.
@@ -1322,13 +1322,13 @@ static int sensor_regulator_power_on(struct rgb_bh1745_data *data, bool on)
 	} else {
 		rc = regulator_enable(data->vdd);
 		if (rc) {
-			BH1745_ERR("%s:Regulator vdd enable failed rc=%d\n",__func__, rc);
+			BH1745_ERR("%s:Regulator vdd enable failed rc=%d\n", __func__, rc);
 			return rc;
 		}
 
 		rc = regulator_enable(data->vio);
 		if (rc) {
-			BH1745_ERR("%s:Regulator vio enable failed rc=%d\n", __func__,rc);
+			BH1745_ERR("%s:Regulator vio enable failed rc=%d\n", __func__, rc);
 			rc = regulator_disable(data->vdd);
 			return rc;
 		}
@@ -1339,7 +1339,7 @@ enable_delay:
 	return rc;
 }
 
-static int sensor_platform_hw_power_on(bool on,struct rgb_bh1745_data *data)
+static int sensor_platform_hw_power_on(bool on, struct rgb_bh1745_data *data)
 {
 	int err = 0;
 
@@ -1362,13 +1362,14 @@ static int sensor_platform_hw_power_on(bool on,struct rgb_bh1745_data *data)
 
 	return err;
 }
+
 static int sensor_platform_hw_init(struct rgb_bh1745_data *data)
 {
 	int error;
 
 	error = sensor_regulator_configure(data, true);
 	if (error < 0) {
-		BH1745_ERR("%s,line %d:unable to configure regulator\n",__func__,__LINE__);
+		BH1745_ERR("%s,line %d:unable to configure regulator\n", __func__, __LINE__);
 		return error;
 	}
 
@@ -1380,7 +1381,7 @@ static void sensor_platform_hw_exit(struct rgb_bh1745_data *data)
 	int error;
 	error = sensor_regulator_configure(data, false);
 	if (error < 0) {
-		BH1745_ERR("%s,line %d:unable to configure regulator\n",__func__,__LINE__);
+		BH1745_ERR("%s,line %d:unable to configure regulator\n", __func__, __LINE__);
 	}
 }
 static int rgb_bh1745_pinctrl_init(struct rgb_bh1745_data *data)
@@ -1389,14 +1390,14 @@ static int rgb_bh1745_pinctrl_init(struct rgb_bh1745_data *data)
 
 	data->pinctrl = devm_pinctrl_get(&client->dev);
 	if (IS_ERR_OR_NULL(data->pinctrl)) {
-		BH1745_ERR("%s,line %d:Failed to get pinctrl\n",__func__,__LINE__);
+		BH1745_ERR("%s,line %d:Failed to get pinctrl\n", __func__, __LINE__);
 		return PTR_ERR(data->pinctrl);
 	}
 	/*we have not set the sleep state of INT pin*/
 	data->pin_default =
 		pinctrl_lookup_state(data->pinctrl, "default");
 	if (IS_ERR_OR_NULL(data->pin_default)) {
-		BH1745_ERR("%s,line %d:Failed to look up default state\n",__func__,__LINE__);
+		BH1745_ERR("%s,line %d:Failed to look up default state\n", __func__, __LINE__);
 		return PTR_ERR(data->pin_default);
 	}
 
@@ -1409,7 +1410,7 @@ static int sensor_parse_dt(struct device *dev,
 	struct device_node *np = dev->of_node;
 	unsigned int tmp;
 	int tp_moudle_count = 0;
-	int index =0;
+	int index = 0;
 	int rc = 0;
 	int array_len = 0;
 	int retval = 0;
@@ -1425,19 +1426,19 @@ static int sensor_parse_dt(struct device *dev,
 
 	rc = of_property_read_u32(np, "bh1745,tp_moudle_count", &tmp);
 	if (rc) {
-		BH1745_ERR("%s,line %d:Unable to read ga_a_value\n",__func__,__LINE__);
+		BH1745_ERR("%s,line %d:Unable to read ga_a_value\n", __func__, __LINE__);
 		return rc;
 	}
 	tp_moudle_count = tmp;
 
 	BH1745_FLOW("%s:%d read lux cal parameter count from dtsi  is %d\n", __FUNCTION__, __LINE__, tp_moudle_count);
 
-	if(tp_moudle_count > MODULE_MANUFACTURE_NUMBER){
-		BH1745_ERR("%s,line %d:tp_moudle_count from dtsi too large: %d\n",__func__,__LINE__, tp_moudle_count);
+	if (tp_moudle_count > MODULE_MANUFACTURE_NUMBER) {
+		BH1745_ERR("%s,line %d:tp_moudle_count from dtsi too large: %d\n", __func__, __LINE__, tp_moudle_count);
 		return  -EINVAL;
 	}
 
-	for(i=0; i<tp_moudle_count; i++){
+	for (i=0; i < tp_moudle_count; i++){
 		array_len = of_property_count_strings(np, data_array_name[i]);
 		if (array_len != PARSE_DTSI_NUMBER) {
 			BH1745_ERR("%s:%d bh1745,junda_data0 length invaild or dts number is larger than:%d\n",__FUNCTION__,__LINE__,array_len);
@@ -1447,10 +1448,10 @@ static int sensor_parse_dt(struct device *dev,
 
 		ptr = (long *)&tp_module_parameter[i];
 
-		for(index = 0; index < array_len; index++){
+		for (index = 0; index < array_len; index++) {
 			retval = of_property_read_string_index(np, data_array_name[i], index, &raw_data0_dts);
 			if (retval) {
-				BH1745_ERR("%s:%d read index = %d,raw_data0_dts = %s,retval = %d error,\n",__FUNCTION__,__LINE__,index, raw_data0_dts, retval);
+				BH1745_ERR("%s:%d read index = %d,raw_data0_dts = %s,retval = %d error,\n", __FUNCTION__, __LINE__, index, raw_data0_dts, retval);
 				return retval;
 			}
 			ptr[index]  = simple_strtol(raw_data0_dts, NULL, 10);
@@ -1473,7 +1474,7 @@ static int rgb_bh1745_probe(struct i2c_client *client,
 	struct rgb_bh1745_platform_data *pdata;
 	int err = 0;
 
-	BH1745_INFO("%s,line %d:PROBE START.\n",__func__,__LINE__);
+	BH1745_INFO("%s,line %d:PROBE START.\n", __func__, __LINE__);
 
 	if (client->dev.of_node) {
 		/*Memory allocated with this function is automatically freed on driver detach.*/
@@ -1481,7 +1482,7 @@ static int rgb_bh1745_probe(struct i2c_client *client,
 				sizeof(struct rgb_bh1745_platform_data),
 				GFP_KERNEL);
 		if (!pdata) {
-			BH1745_ERR("%s,line %d:Failed to allocate memory\n",__func__,__LINE__);
+			BH1745_ERR("%s,line %d:Failed to allocate memory\n", __func__, __LINE__);
 			err =-ENOMEM;
 			goto exit;
 		}
@@ -1495,21 +1496,21 @@ static int rgb_bh1745_probe(struct i2c_client *client,
 	} else {
 		pdata = client->dev.platform_data;
 		if (!pdata) {
-			BH1745_ERR("%s,line %d:No platform data\n",__func__,__LINE__);
+			BH1745_ERR("%s,line %d:No platform data\n", __func__, __LINE__);
 			err = -ENODEV;
 			goto exit;
 		}
 	}
 
 	if (!i2c_check_functionality(adapter, I2C_FUNC_SMBUS_BYTE)) {
-		BH1745_ERR("%s,line %d:Failed to i2c_check_functionality\n",__func__,__LINE__);
+		BH1745_ERR("%s,line %d:Failed to i2c_check_functionality\n", __func__, __LINE__);
 		err = -EIO;
 		goto exit_parse_dt;
 	}
 
 	data = kzalloc(sizeof(struct rgb_bh1745_data), GFP_KERNEL);
 	if (!data) {
-		BH1745_ERR("%s,line %d:Failed to allocate memory\n",__func__,__LINE__);
+		BH1745_ERR("%s,line %d:Failed to allocate memory\n", __func__, __LINE__);
 		err = -ENOMEM;
 		goto exit_parse_dt;
 	}
@@ -1523,25 +1524,25 @@ static int rgb_bh1745_probe(struct i2c_client *client,
 		err = pdata->init(data);
 
 	if (pdata->power_on)
-		err = pdata->power_on(true,data);
+		err = pdata->power_on(true, data);
 
 	i2c_set_clientdata(client, data);
 	rgb_bh1745_parameter_init(data);
 	/* initialize pinctrl */
 	err = rgb_bh1745_pinctrl_init(data);
 	if (err) {
-		BH1745_ERR("%s,line %d:Can't initialize pinctrl\n",__func__,__LINE__);
+		BH1745_ERR("%s,line %d:Can't initialize pinctrl\n", __func__, __LINE__);
 		data->pinctrl = NULL;
-	}else{
-		BH1745_ERR("%s,line %d:RGB BH1745 use pinctrl\n",__func__,__LINE__);
+	} else {
+		BH1745_ERR("%s,line %d:RGB BH1745 use pinctrl\n", __func__, __LINE__);
 	}
 
-	if (!IS_ERR_OR_NULL(data->pinctrl)){
+	if (!IS_ERR_OR_NULL(data->pinctrl)) {
 		err = pinctrl_select_state(data->pinctrl, data->pin_default);
 		if (err) {
-			BH1745_ERR("%s,line %d:Can't select pinctrl default state\n",__func__,__LINE__);
+			BH1745_ERR("%s,line %d:Can't select pinctrl default state\n", __func__, __LINE__);
 		}
-		BH1745_ERR("%s,line %d:RGB BH1745 select pinctrl default state\n",__func__,__LINE__);
+		BH1745_ERR("%s,line %d:RGB BH1745 select pinctrl default state\n", __func__, __LINE__);
 	}
 
 	mutex_init(&data->update_lock);
@@ -1593,7 +1594,7 @@ static int rgb_bh1745_probe(struct i2c_client *client,
 	data->timer.function = rgb_bh1745_als_timer_func;
 
 	if (pdata->power_on)
-		err = pdata->power_on(false,data);
+		err = pdata->power_on(false, data);
 
 	BH1745_INFO("%s: Support ver. %s enabled\n", __func__, DRIVER_VERSION);
 	data->device_exist = true;
@@ -1607,7 +1608,7 @@ exit_unregister_dev_als:
 	input_unregister_device(data->input_dev_als);
 exit_power_off:
 	if (pdata->power_on)
-		pdata->power_on(false,data);
+		pdata->power_on(false, data);
 	if (pdata->exit)
 		pdata->exit(data);
 	kfree(data);
@@ -1622,7 +1623,7 @@ static int rgb_bh1745_remove(struct i2c_client *client)
 	struct rgb_bh1745_data *data = i2c_get_clientdata(client);
 	struct rgb_bh1745_platform_data *pdata = data->platform_data;
 
-	data->enable = ADC_GAIN_X16|RGBC_EN_OFF;
+	data->enable = ADC_GAIN_X16 | RGBC_EN_OFF;
 	rgb_bh1745_set_enable(client, data->enable);
 	sysfs_remove_group(&client->dev.kobj, &rgb_bh1745_attr_group);
 
@@ -1632,7 +1633,7 @@ static int rgb_bh1745_remove(struct i2c_client *client)
 	hrtimer_cancel(&data->timer);
 
 	if (pdata->power_on)
-		pdata->power_on(false,data);
+		pdata->power_on(false, data);
 
 	if (pdata->exit)
 		pdata->exit(data);

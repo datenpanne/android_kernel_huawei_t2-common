@@ -1,4 +1,3 @@
-
 /*
  * Gadget Driver for Android
  *

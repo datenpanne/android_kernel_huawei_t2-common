@@ -120,6 +120,12 @@ static int synaptics_rmi4_resume(struct device *dev);
 static ssize_t synaptics_rmi4_f01_reset_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count);
 
+static ssize_t synaptics_rmi4_set_abs_x_axis(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count);
+
+static ssize_t synaptics_rmi4_set_abs_y_axis(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count);
+
 static ssize_t synaptics_rmi4_f01_productinfo_show(struct device *dev,
 		struct device_attribute *attr, char *buf);
 
@@ -361,6 +367,12 @@ static struct device_attribute attrs[] = {
 	__ATTR(reset, (S_IWUSR | S_IWGRP),
 			NULL,
 			synaptics_rmi4_f01_reset_store),
+	__ATTR(set_abs_x_axis, (S_IWUSR | S_IWGRP),
+			NULL,
+			synaptics_rmi4_set_abs_x_axis),
+	__ATTR(set_abs_y_axis, (S_IWUSR | S_IWGRP),
+			NULL,
+			synaptics_rmi4_set_abs_y_axis),
 	__ATTR(productinfo, S_IRUGO,
 			synaptics_rmi4_f01_productinfo_show,
 			synaptics_rmi4_store_error),
@@ -374,7 +386,7 @@ static struct device_attribute attrs[] = {
 			synaptics_rmi4_0dbutton_show,
 			synaptics_rmi4_0dbutton_store),
 #if defined(CONFIG_SECURE_TOUCH)
-	__ATTR(secure_touch_enable, (S_IRUGO | S_IWUGO),
+	__ATTR(secure_touch_enable, (S_IRUGO | S_IWUSR | S_IWGRP),
 			synaptics_secure_touch_enable_show,
 			synaptics_secure_touch_enable_store),
 	__ATTR(secure_touch, S_IRUGO ,
@@ -659,6 +671,42 @@ static ssize_t synaptics_rmi4_full_pm_cycle_store(struct device *dev,
 		return -EINVAL;
 
 	rmi4_data->full_pm_cycle = input > 0 ? 1 : 0;
+
+	return count;
+}
+
+static ssize_t synaptics_rmi4_set_abs_x_axis(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	unsigned int input;
+	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
+
+	if (sscanf(buf, "%u", &input) != 1)
+		return -EINVAL;
+
+	if (input == 0)
+		return -EINVAL;
+
+	input_set_abs_params(rmi4_data->input_dev, ABS_MT_POSITION_X,
+			0, input, 0, 0);
+
+	return count;
+}
+
+static ssize_t synaptics_rmi4_set_abs_y_axis(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	unsigned int input;
+	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
+
+	if (sscanf(buf, "%u", &input) != 1)
+		return -EINVAL;
+
+	if (input == 0)
+		return -EINVAL;
+
+	input_set_abs_params(rmi4_data->input_dev, ABS_MT_POSITION_Y,
+			0, input, 0, 0);
 
 	return count;
 }
@@ -1417,7 +1465,7 @@ static int synaptics_rmi4_irq_enable(struct synaptics_rmi4_data *rmi4_data,
 	return retval;
 }
 
-static void synaptics_rmi4_set_intr_mask(struct synaptics_rmi4_fn *fhandler,
+static int synaptics_rmi4_set_intr_mask(struct synaptics_rmi4_fn *fhandler,
 		struct synaptics_rmi4_fn_desc *fd,
 		unsigned int intr_count)
 {
@@ -1425,6 +1473,12 @@ static void synaptics_rmi4_set_intr_mask(struct synaptics_rmi4_fn *fhandler,
 	unsigned char intr_offset;
 
 	fhandler->intr_reg_num = (intr_count + 7) / 8;
+	if (fhandler->intr_reg_num >= MAX_INTR_REGISTERS) {
+		fhandler->intr_reg_num = 0;
+		fhandler->num_of_data_sources = 0;
+		fhandler->intr_mask = 0;
+		return -EINVAL;
+	}
 	if (fhandler->intr_reg_num != 0)
 		fhandler->intr_reg_num -= 1;
 
@@ -1437,7 +1491,7 @@ static void synaptics_rmi4_set_intr_mask(struct synaptics_rmi4_fn *fhandler,
 			ii++)
 		fhandler->intr_mask |= 1 << ii;
 
-	return;
+	return 0;
 }
 
 static int synaptics_rmi4_f01_init(struct synaptics_rmi4_data *rmi4_data,
@@ -1445,12 +1499,16 @@ static int synaptics_rmi4_f01_init(struct synaptics_rmi4_data *rmi4_data,
 		struct synaptics_rmi4_fn_desc *fd,
 		unsigned int intr_count)
 {
+	int retval;
+
 	fhandler->fn_number = fd->fn_number;
 	fhandler->num_of_data_sources = fd->intr_src_count;
 	fhandler->data = NULL;
 	fhandler->extra = NULL;
 
-	synaptics_rmi4_set_intr_mask(fhandler, fd, intr_count);
+	retval = synaptics_rmi4_set_intr_mask(fhandler, fd, intr_count);
+	if (retval < 0)
+		return -EINVAL;
 
 	rmi4_data->f01_query_base_addr = fd->query_base_addr;
 	rmi4_data->f01_ctrl_base_addr = fd->ctrl_base_addr;
@@ -1548,7 +1606,9 @@ static int synaptics_rmi4_f11_init(struct synaptics_rmi4_data *rmi4_data,
 
 	rmi4_data->max_touch_width = MAX_F11_TOUCH_WIDTH;
 
-	synaptics_rmi4_set_intr_mask(fhandler, fd, intr_count);
+	retval = synaptics_rmi4_set_intr_mask(fhandler, fd, intr_count);
+	if (retval < 0)
+		return -EINVAL;
 
 	abs_data_size = query[5] & MASK_2BIT;
 	abs_data_blk_size = 3 + (2 * (abs_data_size == 0 ? 1 : 0));
@@ -1781,7 +1841,11 @@ static int synaptics_rmi4_f12_init(struct synaptics_rmi4_data *rmi4_data,
 	rmi4_data->max_touch_width = max(rmi4_data->num_of_rx,
 			rmi4_data->num_of_tx);
 
-	synaptics_rmi4_set_intr_mask(fhandler, fd, intr_count);
+	retval = synaptics_rmi4_set_intr_mask(fhandler, fd, intr_count);
+	if (retval < 0) {
+		retval = -EINVAL;
+		goto free_function_handler_mem;
+	}
 
 	/* Allocate memory for finger data storage space */
 	fhandler->data_size = num_of_fingers * size_of_2d_data;
@@ -1939,7 +2003,9 @@ static int synaptics_rmi4_f1a_init(struct synaptics_rmi4_data *rmi4_data,
 	fhandler->fn_number = fd->fn_number;
 	fhandler->num_of_data_sources = fd->intr_src_count;
 
-	synaptics_rmi4_set_intr_mask(fhandler, fd, intr_count);
+	retval = synaptics_rmi4_set_intr_mask(fhandler, fd, intr_count);
+	if (retval < 0)
+		return -EINVAL;
 
 	retval = synaptics_rmi4_f1a_alloc_mem(rmi4_data, fhandler);
 	if (retval < 0)
@@ -2304,6 +2370,8 @@ flash_prog_mode:
 	dev_dbg(rmi4_data->pdev->dev.parent,
 			"%s: Number of interrupt registers = %d\n",
 			__func__, rmi4_data->num_of_intr_regs);
+	if (rmi4_data->num_of_intr_regs >= MAX_INTR_REGISTERS)
+		return -EINVAL;
 
 	retval = synaptics_rmi4_reg_read(rmi4_data,
 			rmi4_data->f01_query_base_addr,
@@ -3562,7 +3630,10 @@ err_set_input_dev:
 					false, 0, 0);
 		}
 	} else {
-		synaptics_dsx_gpio_configure(rmi4_data, false);
+		if (gpio_is_valid(bdata->irq_gpio))
+			gpio_free(bdata->irq_gpio);
+		if (gpio_is_valid(bdata->reset_gpio))
+			gpio_free(bdata->reset_gpio);
 	}
 err_config_gpio:
 	if (rmi4_data->ts_pinctrl) {
@@ -3654,7 +3725,10 @@ static int synaptics_rmi4_remove(struct platform_device *pdev)
 					false, 0, 0);
 		}
 	} else {
-		synaptics_dsx_gpio_configure(rmi4_data, false);
+		if (gpio_is_valid(bdata->irq_gpio))
+			gpio_free(bdata->irq_gpio);
+		if (gpio_is_valid(bdata->reset_gpio))
+			gpio_free(bdata->reset_gpio);
 		if (rmi4_data->ts_pinctrl) {
 			if (IS_ERR_OR_NULL(rmi4_data->pinctrl_state_release)) {
 				devm_pinctrl_put(rmi4_data->ts_pinctrl);

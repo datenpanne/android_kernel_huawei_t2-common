@@ -1459,6 +1459,7 @@ static ssize_t cyttsp5_retrieve_data_structure_show(struct device *dev,
 static ssize_t cyttsp5_read_data_block_row_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
+
 	struct cyttsp5_device_access_data *dad
 		= cyttsp5_get_device_access_data(dev);
 
@@ -1990,12 +1991,11 @@ static int cyttsp5_setup_sysfs(struct device *dev)
 	struct cyttsp5_device_access_data *dad
 		= cyttsp5_get_device_access_data(dev);
 	int rc;
-
 	//   touch_screen_kobject_ts = kobject_create_and_add("touch_screen", NULL);//add touch_screen dir
 	touch_screen_kobject_ts=tp_get_touch_screen_obj();
 	if (!touch_screen_kobject_ts)
 	{
-	tp_log_err("%s %d: touch_screen_kobject created fail!\n", __func__, __LINE__);		
+	tp_log_err("%s %d: touch_screen_kobject created fail!\n", __func__, __LINE__);
 		rc=-EIO;
 		goto unregister_touch_screen;
 	}
@@ -2008,7 +2008,7 @@ static int cyttsp5_setup_sysfs(struct device *dev)
 	cyttsp5_kobject=kobject_create_and_add("cyttsp5", touch_screen_kobject_ts);
 	if (!cyttsp5_kobject)
 	{
-		tp_log_err("%s %d: cyttsp5_kobject created fail!\n", __func__, __LINE__);		
+		tp_log_err("%s %d: cyttsp5_kobject created fail!\n", __func__, __LINE__);
 		rc=-EIO;
 		goto unregister_cyttsp5;
 	}

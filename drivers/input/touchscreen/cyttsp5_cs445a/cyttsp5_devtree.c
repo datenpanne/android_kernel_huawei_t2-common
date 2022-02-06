@@ -563,6 +563,7 @@ static struct touch_settings *create_and_get_touch_setting(
 	if (IS_ERR_OR_NULL(data)) {
 		tp_log_err("%s %d:create and get %s fail.\n",
 					__func__, __LINE__, name);
+
 		return (void *)data;
 	}
 
@@ -570,7 +571,7 @@ static struct touch_settings *create_and_get_touch_setting(
 				__func__, __LINE__, name, size);
 	setting = kzalloc(sizeof(*setting), GFP_KERNEL);
 	if (!setting) {
-		tp_log_err("%s %d:kzalloc fail.\n", __func__, __LINE__);
+		tp_log_err("%s %d:kzalloc fail.\n",	__func__, __LINE__);
 		rc = -ENOMEM;
 		goto fail_free_data;
 	}
@@ -635,15 +636,6 @@ static struct cyttsp5_power_config *create_and_get_power_config(struct device_no
 	} else {
 		power_config->vbus_type = (u8)value;
 		tp_log_info("%s %d: [cy,vbus-type] is %d.\n", __func__, __LINE__, power_config->vbus_type);
-
-		rc = of_property_read_u32(core_node, "cy,vbus-value", &value);
-		if (rc) {
-			tp_log_err("%s %d: [cy,vbus-value] not found, use default value 1800000, rc = %d.\n", __func__, __LINE__, rc);
-			power_config->vbus_value = 1800000;
-		} else {
-			power_config->vbus_value = value;
-			tp_log_info("%s %d: [cy,vbus-value] is %d.\n", __func__, __LINE__, power_config->vbus_value);
-		}
 	}
 
 	rc = of_property_read_string(core_node, "cy,vdd", &power_config->vdd_name);

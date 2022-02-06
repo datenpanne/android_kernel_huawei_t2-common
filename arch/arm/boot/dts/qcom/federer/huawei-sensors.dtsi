@@ -1,4 +1,3 @@
-/*use fromdos convert file format to linux*/
 /* Copyright (c) 2013 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -10,6 +9,7 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+
 &tlmm_pinmux {
 	akm_reset_pin {
 		qcom,pins = <&gp 36>;
@@ -26,15 +26,16 @@
 		};
 	};
 
-	kx023_int1_pin {
+	kx122_int_pin {
 		qcom,pins = <&gp 115>;
+		qcom,pin-func = <0>;
 		qcom,num-grp-pins = <1>;
-		label = "kx023_int_pin";
-		kx023_int1_default: int1_default {
+		label = "kx122-int";
+		kx122_int_default: kx122_int_default {
 			drive-strength = <6>;
 			bias-pull-dowm;
 		};
-		kx023_int1_sleep: int1_sleep {
+        kx122_int_sleep: kx122_int_sleep {
 			drive-strength = <2>;
 			bias-pull-down;
 		};
@@ -90,14 +91,14 @@
 		pinctrl-1 = <&akm_sleep>;
 		vdd-supply = <&pm8916_l17>;
 		vio-supply = <&pm8916_l6>;
-		akm,layout = <0x6>;
+		akm,layout = <0x0>;
 		akm,gpio_rstn = <&msm_gpio 36 0x0>;
 		akm,auto-report;
 		akm,use-hrtimer;
 		akm,pdc_file_name = "pdc_ath_al00.txt";
 	//	akm,pdc_file_name = "pdc_FDR.txt";
-		akm,i2c-scl-gpio = <&msm_gpio 7 0x0>;
-		akm,i2c-sda-gpio = <&msm_gpio 6 0x0>;
+		//akm,i2c-scl-gpio = <&msm_gpio 7 0x0>;
+		//akm,i2c-sda-gpio = <&msm_gpio 6 0x0>;
 	};
 
 	avago@39 {
@@ -115,11 +116,12 @@
 		avago,ps_hysteresis_threshold = <500>;
 		avago,ps_pulse = <8>;
 		avago,ps_pgain = <0>;
+		avago,diff_tp = <5>;
 		avago,als_B = <1860>;
 		avago,als_C = <750>;
 		avago,als_D = <1290>;
 		avago,ga_value = <48>;
-	        avago,ga_a_value = <112>;
+		avago,ga_a_value = <112>;
 		avago,ga_c_value = <450>;
 		avago,ga_d_value = <162>;
 		avago,window = <110>;
@@ -128,6 +130,7 @@
 		avago,ga_f_value = <43>;
 		avago,i2c-scl-gpio = <&msm_gpio 7 0x0>;
 		avago,i2c-sda-gpio = <&msm_gpio 6 0x0>;
+		avago,mix-light;
 	};
 
 	avago@52 {
@@ -157,18 +160,18 @@
 	};
 
 	rohm@38 {
-        compatible = "rohm,bh1745";
-        reg = <0x38>;
-        vdd-supply = <&pm8916_l17>;
-        vio-supply = <&pm8916_l6>;
-        bh1745,tp_moudle_count = <1>;
-        /*[module_id] [golden judge] r[0] r[1] g[0] g[1] b[0] b[1]*/
-        bh1745,cal_data0 = "1","328","980","257","6636","6801","0","0",
-        /*[white judge] r[0] r[1] g[0]  g[1] b[0] b[1]*/
-        "246","423","234","2399","2227","0","0",
-        /*[blue judge] r[0] r[1] g[0] g[1] b[0] b[1]*/
-        "646","4100","1248","14018","10972","0","0";
-    };
+		compatible = "rohm,bh1745";
+		reg = <0x38>;
+		vdd-supply = <&pm8916_l17>;
+		vio-supply = <&pm8916_l6>;
+		bh1745,tp_moudle_count = <1>;
+		/*[module_id] [golden judge] r[0] r[1] g[0] g[1] b[0] b[1]*/
+		bh1745,cal_data0 = "1","328","980","257","6636","6801","0","0",
+		/*[white judge] r[0] r[1] g[0]  g[1] b[0] b[1]*/
+		"246","423","234","2399","2227","0","0",
+		/*[blue judge] r[0] r[1] g[0] g[1] b[0] b[1]*/
+		"646","4100","1248","14018","10972","0","0";
+	};
 
 	st@19 {
 		compatible = "st,lis3dh";
@@ -177,6 +180,7 @@
 		pinctrl-0 = <&lis3dh_int1_default>;
 		pinctrl-1 = <&lis3dh_int1_sleep>;
 		interrupt-parent = <&msm_gpio>;
+		//interrupts = <115 0x2002>;
 		vdd-supply = <&pm8916_l17>;
 		vddio-supply = <&pm8916_l6>;
 		st,min-interval = <5>;
@@ -190,34 +194,37 @@
 		// st,negate-y;
 	};
 
-	Rohm@1f {
-		compatible = "kionix,kx023";
+	kx122@1f { /* Kionix accelerometer */
+		compatible = "kionix,kx122";
 		reg = <0x1f>;
+		pinctrl-names = "kx122_int_default", "kx122_int_sleep";
+		pinctrl-0 = <&kx122_int_default>;
+		pinctrl-1 = <&kx122_int_sleep>;
 		vdd-supply = <&pm8916_l17>;
-		vddio-supply = <&pm8916_l6>;
-		/*1 is bottom and others means top*/
-		gs,direct = <3>;
-		gs,min_interval = <5>;
-		gs,poll_interval = <200>;
-		kionix,use-hrtimer;
-		gs,accel_direction = <1>;
-		gs,accel_irq_use_drdy = <0>;
-		gs,accel_g_range = <0>;
-		gs,accel_res = <0>;
-		gs,i2c-scl-gpio = <&msm_gpio 7 0x0>;
-		gs,i2c-sda-gpio = <&msm_gpio 6 0x0>;
+		vio-supply = <&pm8916_l6>;
+		interrupt-parent = <&msm_gpio>;
+		interrupts = <115 0x2002>;
+		kionix,gpio-int1 = <&msm_gpio 115 0x2002>;
+		kionix,x-map = <0>;
+		kionix,y-map = <1>;
+		kionix,z-map = <2>;
+		kionix,x-negate = <0>;
+		kionix,y-negate = <0>;
+		kionix,z-negate = <0>;
+		kionix,g-range = <2>;
+		//kionix,use-drdy-int;
 	};
 };
 
-/{
-	huawei_hall_sensor{
+/ {
+	hall_sensor {
 		compatible = "huawei,hall-ak8789";
 		reg = <0x0 0x8789>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&ak8789_default>;
-		huawei,hall_gpio_camare_south = <&msm_gpio 69 0x2>;
-		huawei,hall_gpio_camare_north = <&msm_gpio 52 0x2>;
-		hall_poles = <5>;
-		status = "disabled";
+		huawei,hall_gpio_config_rs = <&msm_gpio 69 0x2>;
+		huawei,hall_gpio_config_rn = <&msm_gpio 52 0x2>;
+		hall_poles = <1>;
+		status = "ok";
 	};
 };

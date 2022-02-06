@@ -75,8 +75,6 @@ struct result {
     int cm_button_delta;
     struct gd_sensor*cm_gradient_col;
     struct gd_sensor*cm_gradient_row;
-    bool cm_sensor_row_gradient_pass;
-    bool cm_sensor_col_gradient_pass;
     /* Sensor Cp validation */
     bool cp_test_pass;
     bool cp_sensor_delta_pass;

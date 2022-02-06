@@ -131,28 +131,28 @@ static int print_cp_info(struct seq_file *file, struct configuration *configurat
         seq_printf(file, "cp_sensor_rx_raw_data:\n");
         for(i = 0 ; i < result->rx_num; i++)
             seq_printf(file, "%6d", result->cp_sensor_rx_raw_data[i]);
-        seq_printf(file, "\n"); 
+        seq_printf(file, "\n");
     }
 
     if(result->cp_sensor_rx_data) {
         seq_printf(file, "cp_sensor_rx_data:\n");
         for(i = 0 ; i < result->rx_num; i++)
-            seq_printf(file, "%8d", result->cp_sensor_rx_data[i]);
-        seq_printf(file, "\n"); 
+            seq_printf(file, "%6d", result->cp_sensor_rx_data[i]);
+        seq_printf(file, "\n");
     }
 
     if(result->cp_sensor_tx_raw_data) {
         seq_printf(file, "cp_sensor_tx_raw_data:\n");
         for(i = 0 ; i < result->tx_num; i++)
             seq_printf(file, "%6d", result->cp_sensor_tx_raw_data[i]);
-        seq_printf(file, "\n"); 
+        seq_printf(file, "\n");
     }
 
     if(result->cp_sensor_tx_data) {
         seq_printf(file, "cp_sensor_tx_data:\n");
         for(i = 0 ; i < result->tx_num; i++)
-            seq_printf(file, "%8d", result->cp_sensor_tx_data[i]);
-        seq_printf(file, "\n"); 
+            seq_printf(file, "%6d", result->cp_sensor_tx_data[i]);
+        seq_printf(file, "\n");
     }
 exit:
     return ret;
@@ -162,7 +162,6 @@ int result_save(struct seq_file *file, struct configuration *configuration,
         struct result *result)
 {
     int ret = 0;
-    int check_item = 0;
     if(! configuration || !result) {
         tp_log_err("%s, param invalid\n",__func__);
         ret = -EINVAL;
@@ -170,25 +169,17 @@ int result_save(struct seq_file *file, struct configuration *configuration,
     }
     //printk("result:");
     seq_printf(file, "result:");
-    PRINT_RESULT(check_item++, result->test_summary, file);
+    PRINT_RESULT(0, result->test_summary, file);
     if(result->cm_test_run) {
-        PRINT_RESULT(check_item++, result->cm_test_pass, file);
-        PRINT_RESULT(check_item++, result->cm_sensor_validation_pass, file);
-        PRINT_RESULT(check_item++, result->cm_sensor_col_gradient_pass, file);
-        PRINT_RESULT(check_item++, result->cm_sensor_row_gradient_pass, file);
-        if(configuration->family_type != 0) {
-            PRINT_RESULT(check_item++, result->cm_sensor_col_delta_pass, file);
-            PRINT_RESULT(check_item++, result->cm_sensor_row_delta_pass, file);
-        }
+        PRINT_RESULT(1, result->cm_test_pass, file);
+        PRINT_RESULT(2, result->cm_sensor_validation_pass, file);
+        PRINT_RESULT(3, result->cm_sensor_col_delta_pass, file);
+        PRINT_RESULT(4, result->cm_sensor_row_delta_pass, file );
     }
-
     if(result->cp_test_run) {
-        PRINT_RESULT(check_item++, result->cp_test_pass, file );
-        PRINT_RESULT(check_item++, result->cp_rx_validation_pass, file);
-        PRINT_RESULT(check_item++, result->cp_tx_validation_pass, file);
-        if(configuration->family_type != 0) {
-            PRINT_RESULT(check_item++, result->cp_sensor_delta_pass, file);
-        }
+        PRINT_RESULT(5, result->cp_test_pass, file );
+        PRINT_RESULT(6, result->cp_rx_validation_pass, file);
+        PRINT_RESULT(7, result->cp_tx_validation_pass, file);
     }
     seq_printf(file, "\n");
     seq_printf(file ,"rx_num:%d, tx_num:%d\n", result->rx_num, result->tx_num);
@@ -200,7 +191,7 @@ int result_save(struct seq_file *file, struct configuration *configuration,
     if(result->cp_test_run) {
         print_cp_info(file, configuration, result);
     }
-    
+
 exit:
     return ret;
 }

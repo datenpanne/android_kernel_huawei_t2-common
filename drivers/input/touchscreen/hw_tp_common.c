@@ -3,7 +3,7 @@
  * Copyright (c) 2014 Huawei Device Company
  *
  * This file provide common requeirment for different touch IC.
- * 
+ *
  * 2014-01-04:Add "tp_get_touch_screen_obj" by sunlibin
  *
  */
@@ -13,8 +13,6 @@
 /*echo debug_level > sys/module/hw_tp_common/paramers/hw_tp_common_debug_mask */
 int hw_tp_common_debug_mask = TP_INFO;
 module_param_named(hw_tp_common_debug_mask, hw_tp_common_debug_mask, int, 0664);
-bool pt_test_enable_tp = 0;
-module_param_named(pt_test_enable_tp, pt_test_enable_tp, bool, 0664);
 static int g_tp_type = UNKNOW_PRODUCT_MODULE;
 static struct kobject *touch_screen_kobject_ts = NULL;
 static struct kobject *touch_glove_func_ts = NULL;

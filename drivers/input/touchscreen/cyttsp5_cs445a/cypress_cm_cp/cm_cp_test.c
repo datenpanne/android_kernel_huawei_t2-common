@@ -55,8 +55,6 @@
 #define IDAC_LSB_DEFAULT	80
 #define MTX_SUM_DEFAULT		1
 #define CLK_DEFAULT		48
-#define CLK_37M		37
-
 #define VREF_DEFAULT     2
 
 #define CONVERSION_CONST	1000
@@ -67,17 +65,17 @@
 #define ABS(x)			(((x) < 0) ? -(x) : (x))
 
 //#define LOG_IS_NOT_SHOW_RAW_DATA
-
+/*
 static struct rx_attenuator_lookup rx_attenuator_lookup_table[] =
     {RX_ATTENUATOR_LOOKUP_TABLE};
-
+*/
 static int8_t mtx_sum_lookup_table[] =
     {MTX_SUM_LOOKUP_TABLE};
-
+/*
 static int selfcap_signal_swing_lookup_table[] =
     {SELFCAP_SIGNAL_SWING_LOOKUP_TABLE};
-
-
+*/
+/*
 static int rx_attenuator_lookup(uint8_t index, int *value)
 {
     int i;
@@ -90,7 +88,7 @@ static int rx_attenuator_lookup(uint8_t index, int *value)
 
     return -EINVAL;
 }
-
+*/
 static int mtx_sum_lookup(uint8_t mtx_order, int *mtx_sum)
 {
     if (IS_MTX_ORDER_VALID(mtx_order)) {
@@ -101,7 +99,7 @@ static int mtx_sum_lookup(uint8_t mtx_order, int *mtx_sum)
 
     return -EINVAL;
 };
-
+/*
 static int selfcap_signal_swing_lookup(uint8_t ref_scale, uint8_t rxdac,
 		int *vref_low, int *vref_mid, int *vref_high)
 {
@@ -120,7 +118,7 @@ static int selfcap_signal_swing_lookup(uint8_t ref_scale, uint8_t rxdac,
 
     return -EINVAL;
 }
-
+*/
 static int get_configuration_parameter(enum parameter_id id,
         enum parameter_type *parameter_type,
         union parameter_value *parameter_value)
@@ -139,7 +137,7 @@ static int get_configuration_parameter(enum parameter_id id,
 
     tp_log_debug("%s,id:%d\n", __func__, id);
     ret = parameter_get_info(id, &parameter_address, &parameter_size,
-            &parameter_mask, parameter_type);
+		&parameter_mask, parameter_type);
     if (ret) {
         tp_log_err("%s:Unable to get parameter info!\n",__func__);
         goto exit;
@@ -336,21 +334,21 @@ static int retrieve_button_raw_data(uint16_t read_offset, uint16_t read_length,
         ret = -EINVAL;
         goto free;
     }
-    
+
     element_size = GET_ELEMENT_SIZE(data_format);
     if (element_size != 1 && element_size != 2 && element_size != 4) {
     ret = -EINVAL;
     goto free;
     }
-    
+
     tp_log_info("%s: data[0..%d]: ", __func__, read_length *
         BUTTONS_NUM_ELEMENTS * element_size - 1);
     for (i = 0; i < read_length * BUTTONS_NUM_ELEMENTS * element_size; i++)
     tp_log_info("%02X ", data[i]);
     tp_log_info("\n");
-    
+
     sign = GET_SIGN(data_format);
-    
+
     for (i = 0; i < read_length; i++)
     raw_data[i] = get_element(element_size, sign,
                 &data[((i * BUTTONS_NUM_ELEMENTS) +
@@ -375,11 +373,11 @@ static int retrieve_data_structure(uint16_t read_offset, uint16_t read_length,
     int ret = 0;
     tp_log_info("%s called\n", __func__);
     while (read_length > 0) {
-        if(read_length > MAX_READ_LENGTH) {
-                myread = MAX_READ_LENGTH;
-        } else {
-                myread = read_length;
-        }
+		if(read_length > MAX_READ_LENGTH) {
+			myread = MAX_READ_LENGTH;
+		} else {
+			myread = read_length;
+		}
         ret = pip_retrieve_data_structure(read_offset, myread,
                 data_id, &actual_read_len, data_format, data);
         if (ret) {
@@ -466,18 +464,6 @@ static int calculate_cm(int sensor_rawdata, int sensor_localpwc, int int_cap_mut
            sensor_rawdata, sensor_localpwc,qidac, qint ,cm_sensor);
 
     return cm_sensor;
-}
-
-static int calculate_cm_gen6(int raw_data, int tx_period_mutual,
-		int balancing_target_mutual, int scaling_factor_mutual,
-		int idac_lsb, int idac_mutual, int rx_atten_mutual,
-		int gidac_mult, int clk, int vtx, int mtx_sum)
-{
-	int i_bias = gidac_mult * idac_lsb * idac_mutual;
-	int adc = ((tx_period_mutual * balancing_target_mutual*scaling_factor_mutual *idac_mutual * rx_atten_mutual)-5000 * raw_data)/ 
-		(scaling_factor_mutual *idac_mutual * rx_atten_mutual);
-
-	return i_bias * adc * rx_atten_mutual / (clk * vtx * mtx_sum*100);
 }
 
 static void calculate_gradient_row(struct gd_sensor *gd_sensor_row_head,
@@ -659,9 +645,8 @@ static int get_cm_uniformity_test_results(int vdda, uint16_t tx_num,
 {
     union parameter_value parameter_value;
     enum parameter_type parameter_type;
-    uint8_t *sensor_localpwc = NULL;
-    uint8_t *gidacs = NULL;
-    uint16_t read_length=0;
+    int *sensor_localpwc = NULL;
+    //uint16_t read_length;
     uint16_t sensor_element_num = 0;
     uint8_t data_format = 0;
     int gidac_val = 0;
@@ -682,17 +667,12 @@ static int get_cm_uniformity_test_results(int vdda, uint16_t tx_num,
     int ret;
     int i;
     int j;
-    int max_read_elem = 0;
-    int remain_to_read = 0;
-    int read_offset = 0;
 
     sensor_element_num = rx_num * tx_num;
     tp_log_info("%s, get_cm_uniformity_test_results called\n", __func__);
     *sensor_raw_data = kzalloc(sensor_element_num * sizeof(int32_t), GFP_KERNEL);
     *cm_sensor_data = kzalloc(sensor_element_num * sizeof(int),GFP_KERNEL);
-    sensor_localpwc = kzalloc(sensor_element_num * sizeof(uint8_t),GFP_KERNEL);
-    gidacs = kzalloc(tx_num * sizeof(uint8_t),GFP_KERNEL);
-
+    sensor_localpwc = kzalloc((sensor_element_num + tx_num)* sizeof(int),GFP_KERNEL);
     if (!*sensor_raw_data || !*cm_sensor_data || !sensor_localpwc) {
         ret = -ENOMEM;
         goto exit;
@@ -713,7 +693,7 @@ static int get_cm_uniformity_test_results(int vdda, uint16_t tx_num,
 
     /* Step 2: get INT_CAP_MUTUAL */
     tp_log_info("%s: get INT_CAP_MUTUAL\n", __func__);
-    
+
     ret = get_configuration_parameter(INT_CAP_MUTUAL, &parameter_type,
                     &parameter_value);
     if (ret || parameter_type != INTEGER) {
@@ -803,8 +783,7 @@ static int get_cm_uniformity_test_results(int vdda, uint16_t tx_num,
             goto restore_multi_tx;
         }
     }
-
-    /*step 8a:resume Panel Scan*/
+ /*step 8a:resume Panel Scan*/
     ret = pip_resume_scanning();
     if (ret) {
         tp_log_err("%s:Unable to resume panel scan!\n",__func__);
@@ -826,23 +805,33 @@ static int get_cm_uniformity_test_results(int vdda, uint16_t tx_num,
         goto restore_multi_tx;
     }
 
-    /* Step 3: Get Sensor Mutual Global IDACS */
-    ret = pip_retrieve_data_structure(0, tx_num, IDAC_DATA_ID_MUTUAL, &read_length, &data_format, gidacs);
-    tp_log_info("%s: gidacs[0..%d]\n",__func__, tx_num-1);
-    max_gidac = 0;
-    for(i=0; i<tx_num; i++) {
-        printk("%5d ",gidacs[i]);
-        if(gidacs[i] > max_gidac) /*get the max gidac*/
-            max_gidac = gidacs[i];
-    }
-    printk("\n");
+    /* Step 8e: Retrieve Panel Scan raw data */
+    ret = retrieve_panel_localpwc(MUTUAL_LOCAL_PWC_DATA_ID, 0,
+            sensor_element_num + tx_num, &data_format, sensor_localpwc);
     if (ret) {
-        tp_log_err("%s:Unable to retrieve panel gidacs!\n",__func__);
+        tp_log_err("%s:Unable to retrieve panel localpwc!\n",__func__);
         goto restore_multi_tx;
     }
 
-    tp_log_info("%s: max_gidac: %d\n", __func__,  max_gidac);
-    /*get the gidac_val*/
+    tp_log_info("%s: sensor_localpwc[0..%d]:\n", __func__,
+            sensor_element_num + tx_num - 1);
+    max_gidac = sensor_localpwc[0];
+    tp_log_info("global idac:");
+    for(i=0; i<tx_num; i++) {
+        if( sensor_localpwc[i] > max_gidac) {
+            max_gidac = sensor_localpwc[i];
+    }
+        printk("%5d", sensor_localpwc[i]);
+    }
+    printk("\n");
+
+    for( i = 0 ; i < sensor_element_num; i++) {
+        printk("%5d", sensor_localpwc[i + tx_num]);
+        if((i + 1)%rx_num  == 0)
+            printk("\n");
+    }
+
+
     if((max_gidac % mtx_sum) ==0 ) {
         gidac_val = (max_gidac /mtx_sum);
     } else {
@@ -852,53 +841,7 @@ static int get_cm_uniformity_test_results(int vdda, uint16_t tx_num,
         gidac_val =10;
         tp_log_info("%s: reseting gidac_val from 0 to 10\n", __func__);
     }
-    tp_log_info("%s: gidac_val: %d\n", __func__,  gidac_val);
-
-    /*write the gidac_val to RAM.OPENS_TEST_GIDAC*/
-    ret = pip_set_parameter(OPENS_TEST_GIDAC, 1, gidac_val);
-    if (ret) {
-        tp_log_err("Unable to set OPENS_TEST_GIDAC parameter!\n");
-        goto restore_multi_tx;
-    }
-    /*do a opens self test command*/
-    ret = pip_opens_self_test();
-    if (ret) {
-        tp_log_err("Unable to do opens self test!\n");
-        goto restore_multi_tx;
-    }
-
-    /*
-    *get opens self tests results
-    *read multiple times because sometimes driver
-    *can not pass more than 255 bytes back
-    */
-    max_read_elem = MAX_READ_ELEM;
-    remain_to_read = sensor_element_num;
-    read_offset = 0;
-    while(remain_to_read >0) {
-
-        if(remain_to_read >max_read_elem )
-        {
-            ret =pip_get_opens_self_test_results(read_offset, max_read_elem, 3, &read_length, &data_format, &sensor_localpwc[read_offset]);
-        } else {
-            ret =pip_get_opens_self_test_results(read_offset, remain_to_read, 3, &read_length, &data_format, &sensor_localpwc[read_offset]);
-        }
-
-        if (ret < 0) {
-            tp_log_err("Unable to do pip_get_opens_self_test_results!\n");
-            goto restore_multi_tx;
-        }
-        remain_to_read -= read_length;
-        read_offset += read_length;
-    }
-
-    tp_log_info("%s: sensor_localpwc[0..%d]:\n", __func__, sensor_element_num  - 1);
-
-    for( i = 0 ; i < sensor_element_num; i++) {
-        printk("%5d", sensor_localpwc[i]);
-        if((i + 1)%rx_num  == 0)
-            printk("\n");
-    }
+    tp_log_info("%s, max global idac:%d\n", __func__, max_gidac);
 
     /*step 8a:resume Panel Scan*/
     ret = pip_resume_scanning();
@@ -950,7 +893,7 @@ static int get_cm_uniformity_test_results(int vdda, uint16_t tx_num,
     *cm_sensor_average = 0;
 
     for (i = 0; i < sensor_element_num; i++) {
-        (*cm_sensor_data)[i] = calculate_cm((*sensor_raw_data)[i], sensor_localpwc[i], int_cap_mutual, 
+        (*cm_sensor_data)[i] = calculate_cm((*sensor_raw_data)[i], sensor_localpwc[tx_num + i], int_cap_mutual, 
                               idac_lsb, vref, gidac_val, scaling_factor_mutual ,
                               clk, vtx, mtx_sum);
         *cm_sensor_average += (*cm_sensor_data)[i];
@@ -995,1110 +938,8 @@ exit:
         kfree(sensor_localpwc);
         sensor_localpwc = NULL;
     }
-    if(gidacs) {
-        kfree(gidacs);
-        gidacs = NULL;
-    }
     return ret;
 }
-
-static int get_cm_uniformity_test_results_gen6(int vdda, uint16_t tx_num,
-        uint16_t rx_num,  uint16_t button_num, bool skip_cm_button,
-        int32_t **sensor_raw_data,
-        int **cm_sensor_data,
-        int *cm_sensor_average)
-{
-    union parameter_value parameter_value;
-    enum parameter_type parameter_type;
-    uint16_t read_length;
-    uint16_t sensor_element_num = 0;
-    uint8_t data_format = 0;
-    int8_t idac_mutual;
-    int rx_atten_mutual;
-    uint32_t tx_period_mutual;
-    char* vdda_mode;
-    uint32_t scaling_factor_mutual;
-    uint32_t balancing_target_mutual;
-    uint32_t gidac_mult;
-    int vtx;
-    int idac_lsb = IDAC_LSB_DEFAULT;
-    int mtx_sum = MTX_SUM_DEFAULT;
-    int clk = CLK_37M;
-    uint8_t data[IDAC_AND_RX_ATTENUATOR_CALIBRATION_DATA_LENGTH];
-    int ret;
-    int i;
-    int j;
-
-    sensor_element_num = rx_num * tx_num;
-    tp_log_info("%s, get_cm_uniformity_test_results_gen6 called\n", __func__);
-    *sensor_raw_data = kzalloc(sensor_element_num * sizeof(int32_t), GFP_KERNEL);
-    *cm_sensor_data = kzalloc(sensor_element_num * sizeof(int),GFP_KERNEL);
-
-    if (!*sensor_raw_data || !*cm_sensor_data) {
-        ret = -ENOMEM;
-        goto exit;
-    }
-
-    tp_log_info("%s: Set FORCE_SINGLE_TX to 1\n", __func__);
-
-    /* Step 1: Set force single TX */
-    ret = pip_set_parameter(FORCE_SINGLE_TX, 1, 0x01);
-    if (ret) {
-        tp_log_info("%s:Unable to set FORCE_SINGLE_TX parameter!\n",__func__);
-        goto exit;
-    }
-
-    /*workaround for CDT193384*/
-    ret = pip_resume_scanning();
-    if (ret) {
-        tp_log_err("%s:Unable to resume panel scan!\n",__func__);
-        goto restore_multi_tx;
-    }
-
-    ret = pip_suspend_scanning();
-    if (ret) {
-        tp_log_err("%s:Unable to suspend panel scan!\n",__func__);
-        goto restore_multi_tx;
-    }
-    /*end workaround for CDT193384*/
-
-    tp_log_info("%s: Perform calibrate IDACs\n", __func__);
-
-    /* Step 2: Perform calibration */
-    ret = pip_calibrate_idacs(0);
-    if (ret) {
-        tp_log_err("%s:Unable to calibrate IDACs!\n",__func__);
-        goto restore_multi_tx;
-    }
-    if(button_num > 0)
-    {
-        ret = pip_calibrate_idacs(1);
-        if (ret) {
-            tp_log_err("%s Unable to calibrate button IDACs!\n",__func__);
-            goto restore_multi_tx;
-        }
-    }
-
-    tp_log_info("%s: Get Mutual IDAC and RX Attenuator values\n",__func__);
-
-    /* Step 3: Get Mutual IDAC and RX Attenuator values */
-    ret = pip_retrieve_data_structure(0,
-            IDAC_AND_RX_ATTENUATOR_CALIBRATION_DATA_LENGTH,
-            IDAC_AND_RX_ATTENUATOR_CALIBRATION_DATA_ID,
-            &read_length, &data_format, data);
-    if (ret) {
-        tp_log_err("%s:Unable to retrieve data structure!\n",__func__);
-        goto restore_multi_tx;
-    }
-
-    ret = rx_attenuator_lookup(data[RX_ATTENUATOR_MUTUAL_INDEX],
-            &rx_atten_mutual);
-    if (ret) {
-        tp_log_err("%s:Invalid RX Attenuator Index!\n",__func__);
-        goto restore_multi_tx;
-    }
-
-    idac_mutual = (int8_t)data[IDAC_MUTUAL_INDEX];
-
-    tp_log_info("%s: idac_mutual: %d\n", __func__, idac_mutual);
-    tp_log_info("%s: rx_atten_mutual: %d\n", __func__, rx_atten_mutual);
-
-    /* Get CDC:VDDA_MODE */
-    ret = get_configuration_parameter(VDDA_MODE, &parameter_type,
-                &parameter_value);
-    if (ret || parameter_type != STRING) {
-        tp_log_err("%s:Unable to get vdda_mode!\n",__func__);
-        goto restore_multi_tx;
-    }
-
-    vdda_mode = parameter_value.string;
-    tp_log_info("%s: vdda_mode: %s\n", __func__, vdda_mode);
-
-    if (!strcmp(vdda_mode, VDDA_MODE_BYPASS)) {
-        if (vdda != 0)
-            vtx = vdda;
-        else {
-            tp_log_err("%s:VDDA cannot be zero when VDDA_MODE is bypass!\n",__func__);
-            ret = -EINVAL;
-            goto restore_multi_tx;
-            }
-    } else if (!strcmp(vdda_mode, VDDA_MODE_PUMP)) {
-        /* Get CDC:TX_PUMP_VOLTAGE */
-        ret = get_configuration_parameter(TX_PUMP_VOLTAGE,
-                &parameter_type, &parameter_value);
-        if (ret || parameter_type != INTEGER) {
-            tp_log_err("%s:Unable to get tx_pump_voltage!\n",__func__);
-            goto restore_multi_tx;
-        }
-        vtx = parameter_value.flt;
-    } else {
-        tp_log_err("%s:Invalid VDDA_MODE: %s!\n",__func__, vdda_mode);
-        ret = -EINVAL;
-        goto restore_multi_tx;
-    }
-
-    tp_log_info("%s: vtx: %d\n", __func__, vtx);
-
-    /* Get CDC:TX_PERIOD_MUTUAL */
-    ret = get_configuration_parameter(TX_PERIOD_MUTUAL, &parameter_type,
-                &parameter_value);
-    if (ret || parameter_type != INTEGER) {
-        tp_log_err("%s:Unable to get tx_period_mutual!\n",__func__);
-        goto restore_multi_tx;
-    }
-
-    tx_period_mutual = parameter_value.integer;
-    tp_log_info("%s: tx_period_mutual: %d\n", __func__, tx_period_mutual);
-
-    /* Get CDC:SCALING_FACTOR_MUTUAL */
-    ret = get_configuration_parameter(SCALING_FACTOR_MUTUAL,
-                &parameter_type, &parameter_value);
-    if (ret || parameter_type != INTEGER) {
-        tp_log_err("%s:Unable to get scaling_factor_mutual!\n",__func__);
-        goto restore_multi_tx;
-    }
-
-    scaling_factor_mutual = parameter_value.integer;
-    tp_log_info("%s: scaling_factor_mutual: %d\n", __func__,
-            scaling_factor_mutual);
-
-    /* Get Calibration:BALANCING_TARGET_MUTUAL */
-    ret = get_configuration_parameter(BALANCING_TARGET_MUTUAL,
-                &parameter_type, &parameter_value);
-    if (ret || parameter_type != INTEGER) {
-        tp_log_err("%s:Unable to get balancing_target_mutual!\n",__func__);
-        goto restore_multi_tx;
-    }
-
-    balancing_target_mutual = parameter_value.integer;
-    tp_log_info("%s: balancing_target_mutual: %d\n", __func__,
-            balancing_target_mutual);
-
-    /* Get CDC:INFRA_CTRL:GIDAC_MULT */
-    ret = get_configuration_parameter(GIDAC_MULT,
-                &parameter_type, &parameter_value);
-    if (ret || parameter_type != INTEGER) {
-        tp_log_err("%s:Unable to get gidac_mult!\n",__func__);
-        goto restore_multi_tx;
-    }
-
-    gidac_mult = parameter_value.integer;
-
-    tp_log_info("%s: gidac_mult:%d\n", __func__, gidac_mult);
-
-    /* Step 4a: Execute Panel Scan */
-    ret = pip_execute_panel_scan();
-    if (ret) {
-        tp_log_err("%s:Unable to execute panel scan!\n",__func__);
-        goto restore_multi_tx;
-    }
-
-    /* Step 4b: Retrieve Panel Scan raw data */
-    ret = retrieve_panel_raw_data(MUTUAL_CAP_RAW_DATA_ID, 0,
-            sensor_element_num, &data_format, *sensor_raw_data);
-    if (ret) {
-        tp_log_err("%s:Unable to retrieve panel raw data!\n",__func__);
-        goto restore_multi_tx;
-    }
-
-    tp_log_info("%s: sensor_raw_data[0..%d]:\n", __func__,
-                sensor_element_num - 1);
-    for (i = 0; i < tx_num; i++) {
-        for (j = 0; j < rx_num; j++)
-        {
-            printk("%d ",
-                (*sensor_raw_data)[i * rx_num + j]);
-        }
-        printk("\n");
-    }
-
-    /* Step 5 and 6: Calculate Cm_sensor and Cm_sensor_ave */
-    *cm_sensor_average = 0;
-    for (i = 0; i < sensor_element_num; i++) {
-        (*cm_sensor_data)[i] = calculate_cm_gen6((*sensor_raw_data)[i],
-            tx_period_mutual, balancing_target_mutual,
-            scaling_factor_mutual, idac_lsb, idac_mutual,
-            rx_atten_mutual, gidac_mult, clk, vtx, mtx_sum);
-        *cm_sensor_average += (*cm_sensor_data)[i];
-    }
-    *cm_sensor_average /= sensor_element_num;
-
-    tp_log_err("%s: cm_sensor_data[0..%d]:\n", __func__,
-        sensor_element_num - 1);
-    for (i = 0; i < tx_num; i++) {
-        for (j = 0; j < rx_num; j++)
-        {
-            printk("%d ",
-                (*cm_sensor_data)[i * rx_num + j]);
-        }
-        printk("\n");
-    }
-
-    tp_log_info("%s: cm_sensor_average: %d\n", __func__,
-            *cm_sensor_average);
-
-restore_multi_tx:
-	tp_log_info("%s: Set FORCE_SINGLE_TX to 0\n", __func__);
-
-	/* Step 13: Set force single TX */
-	ret = pip_set_parameter(FORCE_SINGLE_TX, 1, 0x00);
-	if (ret) {
-		tp_log_err("%s:Unable to set FORCE_SINGLE_TX parameter!\n",__func__);
-		goto exit;
-	}
-
-	tp_log_info("%s: Perform calibrate IDACs\n", __func__);
-
-	/* Step 14: Perform calibration */
-	ret = pip_calibrate_idacs(0);
-	if (ret) {
-		tp_log_err("%s:Unable to calibrate mutual IDACs!\n", __func__);
-		goto exit;
-	}
-	if(button_num > 0)
-	{
-		ret = pip_calibrate_idacs(1);
-		if (ret) {
-			tp_log_err("%s:Unable to calibrate button IDACs!\n", __func__);
-			goto exit;
-		}
-	}
-
-exit:
-	if (ret) {
-		kfree(*cm_sensor_data);
-		kfree(*sensor_raw_data);
-		*cm_sensor_data = NULL;
-		*sensor_raw_data = NULL;
-	}
-	j=0;
-	return ret;
-}
-
-static int calculate_cm_calibration_gen6(int tx_period_mutual,
-		int balancing_target_mutual, int idac_lsb,
-		int idac_mutual, int rx_atten_mutual, int gidac_mult,
-		int clk, int vtx, int mtx_sum)
-{
-	int i_bias = gidac_mult * idac_lsb * idac_mutual;
-	int t_cal = tx_period_mutual * balancing_target_mutual /clk;
-
-	return i_bias * t_cal * rx_atten_mutual / (vtx * mtx_sum*100);
-}
-
-static int get_cm_calibration_check_test_results_gen6(int vdda,
-		bool skip_cm_button,int *cm_sensor_calibration)
-{
-	union parameter_value parameter_value;
-	enum parameter_type parameter_type;
-	uint16_t read_length;
-	uint8_t data_format;
-	int8_t idac_mutual;
-	int rx_atten_mutual;
-	int mtx_sum;
-	char *vdda_mode;
-	uint32_t tx_period_mutual;
-	uint32_t mtx_order;
-	uint32_t balancing_target_mutual;
-	uint32_t gidac_mult;
-	int vtx;
-	int idac_lsb = IDAC_LSB_DEFAULT;
-	int clk = CLK_37M;
-	uint8_t data[IDAC_AND_RX_ATTENUATOR_CALIBRATION_DATA_LENGTH];
-	int ret;
-
-	tp_log_info("%s: Get Mutual IDAC and RX Attenuator values\n",
-			__func__);
-
-	/* Step 1: Get Mutual IDAC and RX Attenuator values */
-	ret = pip_retrieve_data_structure(0,
-			IDAC_AND_RX_ATTENUATOR_CALIBRATION_DATA_LENGTH,
-			IDAC_AND_RX_ATTENUATOR_CALIBRATION_DATA_ID,
-			&read_length, &data_format, data);
-	if (ret) {
-		tp_log_err("%s:Unable to retrieve data structure!\n",__func__);
-		goto exit;
-	}
-
-	ret = rx_attenuator_lookup(data[RX_ATTENUATOR_MUTUAL_INDEX],
-			&rx_atten_mutual);
-	if (ret) {
-		tp_log_err("%s:Invalid RX Attenuator Index!\n",__func__);
-		goto exit;
-	}
-
-	idac_mutual = (int8_t)data[IDAC_MUTUAL_INDEX];
-
-	tp_log_info("%s: idac_mutual: %d\n", __func__, idac_mutual);
-	tp_log_info("%s: rx_atten_mutual: %d\n", __func__, rx_atten_mutual);
-
-	/* Get CDC:VDDA_MODE */
-	ret = get_configuration_parameter(VDDA_MODE, &parameter_type,
-				&parameter_value);
-	if (ret || parameter_type != STRING) {
-		tp_log_err("%s:Unable to get vdda_mode!\n",__func__);
-		goto exit;
-	}
-
-	vdda_mode = parameter_value.string;
-	tp_log_info("%s: vdda_mode: %s\n", __func__, vdda_mode);
-
-	if (!strcmp(vdda_mode, VDDA_MODE_BYPASS)) {
-		if (vdda != 0)
-			vtx = vdda;
-		else {
-			tp_log_err("%s:VDDA cannot be zero when VDDA_MODE is bypass!\n",__func__);
-			ret = -EINVAL;
-			goto exit;
-		}
-	} else if (!strcmp(vdda_mode, VDDA_MODE_PUMP)) {
-		/* Get CDC:TX_PUMP_VOLTAGE */
-		ret = get_configuration_parameter(TX_PUMP_VOLTAGE,
-				&parameter_type, &parameter_value);
-		if (ret || parameter_type != INTEGER) {
-			tp_log_err("%s:Unable to get tx_pump_voltage!\n",__func__);
-			goto exit;
-		}
-		vtx = parameter_value.flt;
-	} else {
-		tp_log_err("%s:Invalid VDDA_MODE: %s!\n",__func__, vdda_mode);
-		ret = -EINVAL;
-		goto exit;
-	}
-
-	tp_log_info("%s: vtx: %d\n", __func__, vtx);
-
-	/* Get CDC:TX_PERIOD_MUTUAL */
-	ret = get_configuration_parameter(TX_PERIOD_MUTUAL, &parameter_type,
-				&parameter_value);
-	if (ret || parameter_type != INTEGER) {
-		tp_log_err("%s:Unable to get tx_period_mutual!\n",__func__);
-		goto exit;
-	}
-
-	tx_period_mutual = parameter_value.integer;
-	tp_log_info("%s: tx_period_mutual: %d\n", __func__, tx_period_mutual);
-
-	/* Get CDC:MTX_ORDER */
-	ret = get_configuration_parameter(MTX_ORDER, &parameter_type,
-				&parameter_value);
-	if (ret || parameter_type != INTEGER) {
-		tp_log_err("%s:Unable to get mtx_order!\n",__func__);
-		goto exit;
-	}
-
-	mtx_order = parameter_value.integer;
-	tp_log_info("%s: mtx_order: %d\n", __func__,  mtx_order);
-
-	ret = mtx_sum_lookup(mtx_order, &mtx_sum);
-	if (ret) {
-		tp_log_err("%s:Invalid MTX Order Index!\n",__func__);
-		goto exit;
-	}
-
-	tp_log_info("%s: mtx_sum: %d\n", __func__, mtx_sum);
-
-	/* Get Calibration:BALANCING_TARGET_MUTUAL */
-	ret = get_configuration_parameter(BALANCING_TARGET_MUTUAL,
-				&parameter_type, &parameter_value);
-	if (ret || parameter_type != INTEGER) {
-		tp_log_err("%s:Unable to get balancing_target_mutual!\n",__func__);
-		goto exit;
-	}
-
-	balancing_target_mutual = parameter_value.integer;
-	tp_log_info("%s: balancing_target_mutual: %d\n", __func__,
-			balancing_target_mutual);
-
-	/* Get CDC:INFRA_CTRL:GIDAC_MULT */
-	ret = get_configuration_parameter(GIDAC_MULT,
-				&parameter_type, &parameter_value);
-	if (ret || parameter_type != INTEGER) {
-		tp_log_err("%s:Unable to get gidac_mult!\n",__func__);
-		goto exit;
-	}
-
-	gidac_mult = parameter_value.integer;
-	tp_log_info("%s: gidac_mult: %d\n", __func__, gidac_mult);
-
-	*cm_sensor_calibration = calculate_cm_calibration_gen6(tx_period_mutual,
-			balancing_target_mutual, idac_lsb, idac_mutual,
-			rx_atten_mutual, gidac_mult, clk, vtx, mtx_sum);
-
-	tp_log_info("%s: cm_sensor_calibration: %d\n", __func__,
-			*cm_sensor_calibration);
-
-exit:
-
-	return ret;
-}
-
-static int validate_cm_test_results_gen6(struct configuration *configuration,
-		struct result *result, uint32_t tx_num, uint32_t rx_num,
-		uint32_t button_num, bool skip_cm_button,
-		int *cm_sensor_data,
-		int cm_sensor_calibration,
-		int cm_sensor_average,
-		int cm_sensor_delta,
-		int **cm_sensor_column_delta, int **cm_sensor_row_delta,
-		bool *pass)
-{
-	uint32_t sensor_num = tx_num * rx_num;
-	uint32_t configuration_sensor_num;
-	uint32_t configuration_button_num;
-	int ret = 0;
-	int i, j;
-	int cm_max ;
-	int cm_min ;
-	int cm_ave ;
-	int cm_max_exclude_edge ;
-	int cm_min_exclude_edge ;
-	int cm_ave_exclude_edge ;
-	int cm_data;
-
-	*cm_sensor_column_delta = kzalloc(rx_num * tx_num *sizeof(float), GFP_KERNEL);
-	*cm_sensor_row_delta = kzalloc(tx_num * rx_num  * sizeof(float), GFP_KERNEL);
-	if (!*cm_sensor_column_delta || !*cm_sensor_row_delta) {
-		ret = -ENOMEM;
-		goto exit;
-	}
-
-	configuration_sensor_num =
-			configuration->cm_min_max_table_sensor_size / 2;
-	configuration_button_num =
-			configuration->cm_min_max_table_button_size / 2;
-
-	if (configuration_sensor_num != sensor_num) {
-		tp_log_err("%s: Configuration and Device number of sensors mismatch! (Configuration:%d, Device:%d)\n",
-				__func__, configuration_sensor_num,
-				sensor_num);
-		ret = -EINVAL;
-		goto exit;
-	}
-
-	if (!skip_cm_button && (button_num != configuration_button_num)) {
-		tp_log_err("%s: Configuration and Device number of buttons mismatch! (Configuration:%d, Device:%d)\n",
-				__func__, configuration_button_num,
-				button_num);
-		ret = -EINVAL;
-		goto exit;
-	}
-
-	/* Check each sensor Cm data for min/max values */
-	result->cm_sensor_validation_pass = true;
-	for (i = 0; i < sensor_num; i++) {
-		int row=i % rx_num;
-		int col=i / rx_num;
-		int cm_sensor_min =
-			configuration->cm_min_max_table_sensor[(row*tx_num+col)*2];
-		int cm_sensor_max =
-			configuration->cm_min_max_table_sensor[(row*tx_num+col)*2 + 1];
-		if ((cm_sensor_data[i] < cm_sensor_min)
-				|| (cm_sensor_data[i] > cm_sensor_max)) {
-			tp_log_err("%s: Sensor[%d,%d]:%d (%d,%d)\n",
-					"Cm sensor min/max test",
-					row,col,
-					(int)cm_sensor_data[i],
-					cm_sensor_min, cm_sensor_max);
-			result->cm_sensor_validation_pass = false;
-		}
-	}
-
-	/* Check each row Cm data with neighbor for difference */
-	result->cm_sensor_row_delta_pass = true;
-	for (i = 0; i < tx_num; i++) {
-		for (j = 1; j < rx_num; j++) {
-			int cm_sensor_row_diff =
-				ABS((int)cm_sensor_data[i * rx_num + j] -
-					(int)cm_sensor_data[i * rx_num + j - 1]);
-			(*cm_sensor_row_delta)[i * rx_num + j - 1] =
-					cm_sensor_row_diff;
-			if (cm_sensor_row_diff
-					> configuration->cm_range_limit_row) {
-				tp_log_err("%s: Sensor[%d,%d]:%d (%d)\n",
-					"Cm sensor row range limit test",
-					j, i,
-					cm_sensor_row_diff,
-					configuration->cm_range_limit_row);
-				result->cm_sensor_row_delta_pass = false;
-			}
-		}
-	}
-
-	/* Check each column Cm data with neighbor for difference */
-	result->cm_sensor_col_delta_pass = true;
-	for (i = 1; i < tx_num; i++) {
-		for (j = 0; j < rx_num; j++) {
-			int cm_sensor_col_diff =
-				ABS((int)cm_sensor_data[i * rx_num + j] -
-					(int)cm_sensor_data[(i - 1) * rx_num + j]);
-			(*cm_sensor_column_delta)[(i - 1) * rx_num + j] =
-					cm_sensor_col_diff;
-			if (cm_sensor_col_diff
-					> configuration->cm_range_limit_col) {
-				tp_log_err("%s: Sensor[%d,%d]:%d (%d)\n",
-					"Cm sensor column range limit test",
-					j, i,
-					cm_sensor_col_diff,
-					configuration->cm_range_limit_col);
-				result->cm_sensor_col_delta_pass = false;
-			}
-		}
-	}
-
-	/* Check sensor calculated Cm for min/max values */
-	result->cm_sensor_calibration_pass = true;
-	if (cm_sensor_calibration < configuration->cm_min_limit_cal
-			|| cm_sensor_calibration >
-				configuration->cm_max_limit_cal) {
-		tp_log_err("%s: Cm_cal:%d (%d,%d)\n",
-				"Cm sensor Cm_cal min/max test",
-				cm_sensor_calibration,
-				configuration->cm_min_limit_cal,
-				configuration->cm_max_limit_cal);
-		result->cm_sensor_calibration_pass = false;
-	}
-
-	/* Check sensor Cm delta for range limit */
-	result->cm_sensor_delta_pass = true;
-	if (cm_sensor_delta > configuration->cm_max_delta_sensor_percent) {
-		tp_log_err("%s: Cm_sensor_delta:%d (%d)\n",
-				"Cm sensor delta range limit test",
-				cm_sensor_delta,
-				configuration->cm_max_delta_sensor_percent);
-		result->cm_sensor_delta_pass = false;
-	}
-
-    /*check sensor CM gradient*/
-	result->cm_gradient_col = (struct gd_sensor *)kzalloc(tx_num * sizeof(struct gd_sensor), GFP_KERNEL);
-	if(result->cm_gradient_col == NULL) {
-		tp_log_err("failed to malloc for gd_sensor_col\n");
-		goto exit;
-	}
-	result->cm_gradient_row =  (struct gd_sensor *)kzalloc(rx_num * sizeof(struct gd_sensor), GFP_KERNEL);
-	if(result->cm_gradient_row == NULL) {
-		tp_log_err("failed to malloc for gd_sensor_row\n");
-		goto exit;
-	}
-	for (j = 0; j < rx_num; j++) {
-		/*re-initialize for a new row*/
-		cm_max = (cm_sensor_data)[j];
-		cm_min =  cm_max;
-		cm_ave = 0;
-		cm_max_exclude_edge = (cm_sensor_data)[rx_num + j];
-		cm_min_exclude_edge =  cm_max_exclude_edge;
-		cm_ave_exclude_edge = 0;
-		//DEBUG_PRINTF("wuyu initialization:cm_max=%d, cm_max_exclude_edge=%d\n ", cm_max, cm_max_exclude_edge);
-		for (i = 0; i < tx_num; i++) {
-			cm_data = (cm_sensor_data)[i * rx_num + j];
-			if (cm_data > cm_max)
-				cm_max = cm_data;
-			if ( cm_data < cm_min)
-				cm_min = cm_data;
-			cm_ave += cm_data;
-			/*calculate exclude edge data*/
-			if((i >  0) && (i < (tx_num-1))) {
-				if (cm_data > cm_max_exclude_edge)
-					cm_max_exclude_edge = cm_data;
-				if ( cm_data < cm_min_exclude_edge)
-					cm_min_exclude_edge = cm_data;
-				cm_ave_exclude_edge += cm_data;
-			}
-		}
-		cm_ave /= tx_num;
-		cm_ave_exclude_edge /= (tx_num-2);
-		fill_gd_sensor_table(result->cm_gradient_row, j, cm_max, cm_min, cm_ave,
-			cm_max_exclude_edge, cm_min_exclude_edge, cm_ave_exclude_edge);
-	}
-
-	result->cm_sensor_row_gradient_pass = true;
-	calculate_gradient_row(result->cm_gradient_row, rx_num,
-			configuration->cm_excluding_row_edge, configuration->cm_excluding_col_edge);
-	for (i = 0;i < configuration->cm_gradient_check_row_size; i++) {
-		if((result->cm_gradient_row + i)->gradient_val > configuration->cm_gradient_check_row[i]
-			 || (result->cm_gradient_row + i)->gradient_val < 0) {
-			tp_log_err("%s cm_max_table_gradient_row_percent[%d]:%d, gradient_val:%d\n", __func__, i, configuration->cm_gradient_check_row[i], (result->cm_gradient_row + i)->gradient_val );
-			tp_log_debug("%s:row[%d] cm_max:%d cm_min:%d cm_ave:%d cm_max_exclude_edge:%d  cm_min_exclude_edge:%d cm_ave_exclude_edge:%d gradient_val=%d \n", 
-			__func__, i,
-			(result->cm_gradient_row + i)->cm_max,
-			(result->cm_gradient_row + i)->cm_min,
-			(result->cm_gradient_row + i)->cm_ave,
-			(result->cm_gradient_row + i)->cm_max_exclude_edge,
-			(result->cm_gradient_row + i)->cm_min_exclude_edge,
-			(result->cm_gradient_row + i)->cm_ave_exclude_edge,
-			(result->cm_gradient_row + i)->gradient_val);
-			result->cm_sensor_row_gradient_pass = false;
-		}
-	}
-	printk("gd_sensor_row:\n");
-	for (i = 0;i < configuration->cm_gradient_check_row_size; i++) {
-		printk("%6d", (result->cm_gradient_row + i)->gradient_val);
-	}
-	printk("\n");
-
-	for (i = 0; i < tx_num; i++) {
-		/*re-initialize for a new col*/
-		cm_max = (cm_sensor_data)[i * rx_num];
-		cm_min = cm_max;
-		cm_ave = 0;
-		cm_max_exclude_edge = (cm_sensor_data)[i * rx_num + 1];
-		cm_min_exclude_edge = cm_max_exclude_edge;
-		cm_ave_exclude_edge = 0;
-
-		for (j = 0; j < rx_num; j++) {
-			cm_data = (cm_sensor_data)[i * rx_num + j];
-			if (cm_data > cm_max)
-				cm_max = cm_data;
-			if ( cm_data < cm_min)
-				cm_min = cm_data;
-			cm_ave += cm_data;
-			/*calculate exclude edge data*/
-			if((j > 0) && (j < (rx_num-1))) {
-				if (cm_data > cm_max_exclude_edge)
-					cm_max_exclude_edge = cm_data;
-				if ( cm_data < cm_min_exclude_edge)
-					cm_min_exclude_edge = cm_data;
-				cm_ave_exclude_edge += cm_data;
-			}
-		}
-		cm_ave /= rx_num;
-		cm_ave_exclude_edge /= (rx_num-2);
-		fill_gd_sensor_table(result->cm_gradient_col, i, cm_max, cm_min, cm_ave,
-			cm_max_exclude_edge, cm_min_exclude_edge, cm_ave_exclude_edge);
-	}
-
-	result->cm_sensor_col_gradient_pass = true;
-	calculate_gradient_col(result->cm_gradient_col, tx_num,
-			configuration->cm_excluding_row_edge, configuration->cm_excluding_col_edge);
-	for (i = 0;i < configuration->cm_gradient_check_col_size; i++) {
-		if((result->cm_gradient_col + i)->gradient_val > configuration->cm_gradient_check_col[i]
-			|| (result->cm_gradient_col + i)->gradient_val < 0) {
-			tp_log_err("%s cm_max_table_gradient_col_percent[%d]:%d, gradient_val:%d\n", __func__, i, configuration->cm_gradient_check_col[i], (result->cm_gradient_col + i)->gradient_val );
-			tp_log_debug("%s:col[%d] cm_max:%d cm_min:%d cm_ave:%d cm_max_exclude_edge:%d  cm_min_exclude_edge:%d cm_ave_exclude_edge:%d gradient_val=%d \n", 
-			__func__, i,
-			(result->cm_gradient_col + i)->cm_max,
-			(result->cm_gradient_col + i)->cm_min,
-			(result->cm_gradient_col + i)->cm_ave,
-			(result->cm_gradient_col + i)->cm_max_exclude_edge,
-			(result->cm_gradient_col + i)->cm_min_exclude_edge,
-			(result->cm_gradient_col + i)->cm_ave_exclude_edge,
-			(result->cm_gradient_col + i)->gradient_val);
-			result->cm_sensor_col_gradient_pass = false;
-		}
-	}
-	printk("gd_sensor_col:\n");
-	for (i = 0;i < configuration->cm_gradient_check_col_size; i++) {
-		printk("%6d", (result->cm_gradient_col + i)->gradient_val);
-	}
-	printk("\n");
-
-	result->cm_test_pass = result->cm_sensor_validation_pass
-			& result->cm_sensor_row_delta_pass
-			& result->cm_sensor_col_delta_pass
-			& result->cm_sensor_calibration_pass
-			& result->cm_sensor_delta_pass
-			& result->cm_sensor_col_gradient_pass
-			& result->cm_sensor_row_gradient_pass;
-	tp_log_info("cm_test_pass=%d \n", result->cm_test_pass);
-exit:
-	if (ret) {
-		kfree(*cm_sensor_row_delta);
-		kfree(*cm_sensor_column_delta);
-		*cm_sensor_row_delta = NULL;
-		*cm_sensor_column_delta = NULL;
-	} else if (pass)
-		*pass = result->cm_test_pass;
-	return ret;
-}
-
-
-static int calculate_cp_calibration_gen6(int tx_period_self,
-		int balancing_target_self, int idac_lsb, int idac_self,
-		int rx_atten_self, int gidac_mult, int clk,
-		int v_swing)
-{
-	int i_bias = gidac_mult * idac_lsb * idac_self;
-	int t_cal = tx_period_self * balancing_target_self* CONVERSION_CONST / (100* clk);
-
-	return i_bias * t_cal * rx_atten_self / v_swing;
-}
-
-static int calculate_cp_gen6(int raw_data, int tx_period_self,
-		int balancing_target_self, int scaling_factor_self,
-		int idac_lsb, int idac_self, int rx_atten_self,
-		int gidac_mult, int clk, int v_swing)
-{
-	int i_bias = gidac_mult * idac_lsb * idac_self;
-	int adc = tx_period_self * balancing_target_self / 100 +
-			50 * raw_data / (scaling_factor_self * idac_self *rx_atten_self);
-
-	return i_bias * adc * rx_atten_self * 10 / (clk * v_swing/100);
-}
-
-static int get_cp_calibration_check_test_results_gen6(
-		uint16_t tx_num, uint16_t rx_num, uint16_t button_num,
-		bool skip_cp_sensor, bool skip_cp_button,
-		int32_t **sensor_tx_raw_data, int32_t **sensor_rx_raw_data,
-		int **cp_sensor_tx_data,
-		int **cp_sensor_rx_data,
-		int *cp_sensor_tx_average, int *cp_sensor_rx_average,
-		int *cp_sensor_rx_calibration,
-		int *cp_sensor_tx_calibration)
-{
-	union parameter_value parameter_value;
-	enum parameter_type parameter_type;
-	uint16_t read_length;
-	uint8_t data_format;
-	int8_t idac_self_rx;
-	int8_t idac_self_tx;
-	uint8_t rxdac;
-	uint8_t ref_scale;
-	int rx_atten_self_rx;
-	int rx_atten_self_tx;
-	int vref_low;
-	int vref_mid;
-	int vref_high;
-	int v_swing;
-	uint32_t tx_period_self;
-	uint32_t scaling_factor_self;
-	uint32_t balancing_target_self;
-	uint32_t gidac_mult;
-	int idac_lsb = IDAC_LSB_DEFAULT;
-	int clk = CLK_37M;
-	uint8_t data[IDAC_AND_RX_ATTENUATOR_CALIBRATION_DATA_LENGTH];
-	int ret;
-	int i;
-
-	/* Get CDC:REFGEN_CTL:RXDAC */
-	ret = get_configuration_parameter(RXDAC, &parameter_type,
-			&parameter_value);
-	if (ret || parameter_type != INTEGER) {
-		tp_log_err("%s:Unable to get rxdac!\n",__func__);
-		goto exit;
-	}
-
-	rxdac = parameter_value.integer;
-	tp_log_info("%s: rxdac: %d\n", __func__, rxdac);
-
-	ret = get_configuration_parameter(REF_SCALE, &parameter_type,
-			&parameter_value);
-	if (ret || parameter_type != INTEGER) {
-		tp_log_err("%s:Unable to get rxdac!\n",__func__);
-		goto exit;
-	}
-
-	ref_scale = parameter_value.integer;
-	tp_log_info("%s: ref_scale: %d\n", __func__, ref_scale);
-
-	ret = selfcap_signal_swing_lookup(ref_scale, rxdac,
-			&vref_low, &vref_mid, &vref_high);
-	if (ret) {
-		tp_log_err("%s:Invalid ref_scale or rxdac!\n",__func__);
-		goto exit;
-	}
-
-	tp_log_info("%s: vref_low: %d\n", __func__, vref_low);
-	tp_log_info("%s: vref_mid: %d\n", __func__, vref_mid);
-	tp_log_info("%s: vref_high: %d\n", __func__, vref_high);
-
-	v_swing = vref_high - vref_low;
-
-	tp_log_info("%s: v_swing: %d\n", __func__, v_swing);
-
-	/* Get CDC:INFRA_CTRL:GIDAC_MULT */
-	ret = get_configuration_parameter(GIDAC_MULT, &parameter_type,
-			&parameter_value);
-	if (ret || parameter_type != INTEGER) {
-		tp_log_err("%s:Unable to get infra_ctrl!\n",__func__);
-		goto exit;
-	}
-
-	gidac_mult = parameter_value.integer;
-	tp_log_info("%s: gidac_mult: %d\n", __func__, gidac_mult);
-	/* Step 1: Perform calibration */
-	ret = pip_calibrate_idacs(0);
-	if (ret) {
-		tp_log_err("%s:Unable to calibrate self IDACs!\n", __func__);
-		goto exit;
-	}
-	if(button_num > 0)
-	{
-		ret = pip_calibrate_idacs(1);
-		if (ret) {
-			tp_log_err("%s:Unable to calibrate button IDACs!\n", __func__);
-			goto exit;
-		}
-	}
-
-	tp_log_info("%s: Get Self IDAC and RX Attenuator values\n", __func__);
-
-	/* Step 2: Get Self IDAC and RX Attenuator Self RX values */
-	ret = pip_retrieve_data_structure(0,
-			IDAC_AND_RX_ATTENUATOR_CALIBRATION_DATA_LENGTH,
-			IDAC_AND_RX_ATTENUATOR_CALIBRATION_DATA_ID,
-			&read_length, &data_format, data);
-	if (ret) {
-		tp_log_err("%s:Unable to retrieve data structure!\n",__func__);
-		goto exit;
-	}
-
-	/* Step 4a: Execute Panel Scan */
-	ret = pip_execute_panel_scan();
-	if (ret) {
-		tp_log_err("%s:Unable to execute panel scan!\n",__func__);
-		goto exit;
-	}
-
-	if (skip_cp_sensor)
-		goto process_cp_button;
-
-	/* Allocate sensor rx and tx buffers */
-	*sensor_tx_raw_data = kzalloc(tx_num * sizeof(int32_t), GFP_KERNEL);
-	*sensor_rx_raw_data = kzalloc(rx_num * sizeof(int32_t), GFP_KERNEL);
-	*cp_sensor_tx_data = kzalloc(tx_num * sizeof(float), GFP_KERNEL);
-	*cp_sensor_rx_data = kzalloc(rx_num * sizeof(float), GFP_KERNEL);
-	if (!*sensor_tx_raw_data || !*sensor_rx_raw_data
-			|| !*cp_sensor_tx_data || !*cp_sensor_rx_data) {
-		ret = -ENOMEM;
-		goto free_buffers;
-	}
-
-	/* Step 4b: Retrieve Panel Scan raw data */
-	ret = retrieve_panel_raw_data(SELF_CAP_RAW_DATA_ID, 0, rx_num,
-			&data_format, *sensor_rx_raw_data);
-	if (ret) {
-		tp_log_err("%s:Unable to retrieve panel raw data!\n",__func__);
-		goto free_buffers;
-	}
-
-	ret = retrieve_panel_raw_data(SELF_CAP_RAW_DATA_ID, rx_num, tx_num,
-			&data_format, *sensor_tx_raw_data);
-	if (ret) {
-		tp_log_err("%s:Unable to retrieve panel raw data!\n",__func__);
-		goto free_buffers;
-	}
-
-	ret = rx_attenuator_lookup(data[RX_ATTENUATOR_SELF_RX_INDEX],
-			&rx_atten_self_rx);
-	if (ret) {
-		tp_log_err("%s:Invalid RX Attenuator Index!\n",__func__);
-		goto free_buffers;
-	}
-
-	idac_self_rx = (int8_t)data[IDAC_SELF_RX_INDEX];
-
-	ret = rx_attenuator_lookup(data[RX_ATTENUATOR_SELF_TX_INDEX],
-			&rx_atten_self_tx);
-	if (ret) {
-		tp_log_err("%s:Invalid RX Attenuator Index!\n",__func__);
-		goto free_buffers;
-	}
-
-	idac_self_tx = (int8_t)data[IDAC_SELF_TX_INDEX];
-
-	tp_log_info("%s: idac_self_rx: %d\n", __func__, idac_self_rx);
-	tp_log_info("%s: rx_atten_self_rx: %d\n", __func__, rx_atten_self_rx);
-	tp_log_info("%s: idac_self_tx: %d\n", __func__, idac_self_tx);
-	tp_log_info("%s: rx_atten_self_tx: %d\n", __func__, rx_atten_self_tx);
-
-	/* Get CDC:TX_PERIOD_SELF */
-	ret = get_configuration_parameter(TX_PERIOD_SELF, &parameter_type,
-				&parameter_value);
-	if (ret || parameter_type != INTEGER) {
-		tp_log_err("%s:Unable to get tx_period_self!\n",__func__);
-		goto free_buffers;
-	}
-
-	tx_period_self = parameter_value.integer;
-	tp_log_info("%s: tx_period_self: %d\n", __func__, tx_period_self);
-
-	/* Get CDC:SCALING_FACTOR_SELF */
-	ret = get_configuration_parameter(SCALING_FACTOR_SELF, &parameter_type,
-				&parameter_value);
-	if (ret || parameter_type != INTEGER) {
-		tp_log_err("%s:Unable to get scaling_factor_self!\n",__func__);
-		goto free_buffers;
-	}
-
-	scaling_factor_self = parameter_value.integer;
-	tp_log_info("%s: scaling_factor_self: %d\n", __func__,
-			scaling_factor_self);
-
-	/* Get Calibration:BALANCING_TARGET_SELF */
-	ret = get_configuration_parameter(BALANCING_TARGET_SELF,
-				&parameter_type, &parameter_value);
-	if (ret || parameter_type != INTEGER) {
-		tp_log_err("%s:Unable to get balancing_target_self!\n",__func__);
-		goto free_buffers;
-	}
-
-	balancing_target_self = parameter_value.integer;
-	tp_log_info("%s: balancing_target_self: %d\n", __func__,
-			balancing_target_self);
-
-	*cp_sensor_rx_calibration = calculate_cp_calibration_gen6(tx_period_self,
-			balancing_target_self, idac_lsb, idac_self_rx,
-			rx_atten_self_rx, gidac_mult, clk, v_swing);
-
-	tp_log_info("%s: cp_sensor_rx_calibration: %d\n", __func__,
-			*cp_sensor_rx_calibration);
-
-	*cp_sensor_tx_calibration = calculate_cp_calibration_gen6(tx_period_self,
-			balancing_target_self, idac_lsb, idac_self_tx,
-			rx_atten_self_tx, gidac_mult, clk, v_swing);
-
-	tp_log_info("%s: cp_sensor_tx_calibration: %d\n", __func__,
-			*cp_sensor_tx_calibration);
-
-	tp_log_info("%s: sensor_rx_raw_data[0..%d]:\n", __func__, rx_num - 1);
-	for (i = 0; i < rx_num; i++){
-		printk("%5d ", (*sensor_rx_raw_data)[i]);}
-	printk("\n");
-
-	*cp_sensor_rx_average = 0;
-	for (i = 0; i < rx_num; i++) {
-		(*cp_sensor_rx_data)[i] = calculate_cp_gen6((*sensor_rx_raw_data)[i],
-				tx_period_self, balancing_target_self,
-				scaling_factor_self, idac_lsb, idac_self_rx,
-				rx_atten_self_rx, gidac_mult, clk, v_swing);
-		*cp_sensor_rx_average += (*cp_sensor_rx_data)[i];
-	}
-	*cp_sensor_rx_average /= rx_num;
-
-	tp_log_info("%s: cp_sensor_rx_data[0..%d]:\n", __func__, rx_num - 1);
-	for (i = 0; i < rx_num; i++){
-		printk("%d ", (*cp_sensor_rx_data)[i]);}
-	printk("\n");
-
-	tp_log_info("%s: cp_sensor_rx_average: %d\n", __func__,
-			*cp_sensor_rx_average);
-
-	tp_log_info("%s: sensor_tx_raw_data[0..%d]:\n", __func__, tx_num - 1);
-	for (i = 0; i < tx_num; i++)
-	{
-		printk("%5d ", (*sensor_tx_raw_data)[i]);
-	}
-    printk("\n");
-
-	*cp_sensor_tx_average = 0;
-	for (i = 0; i < tx_num; i++) {
-		(*cp_sensor_tx_data)[i] = calculate_cp_gen6((*sensor_tx_raw_data)[i],
-				tx_period_self, balancing_target_self,
-				scaling_factor_self, idac_lsb, idac_self_tx,
-				rx_atten_self_tx, gidac_mult, clk, v_swing);
-		*cp_sensor_tx_average += (*cp_sensor_tx_data)[i];
-	}
-	*cp_sensor_tx_average /= tx_num;
-
-	tp_log_info("%s: cp_sensor_tx_data[0..%d]:\n", __func__, tx_num - 1);
-	for (i = 0; i < tx_num; i++)
-	{
-		printk("%d ", (*cp_sensor_tx_data)[i]);
-	}
-	printk("\n");
-
-	tp_log_info("%s: cp_sensor_tx_average: %d\n", __func__,
-			*cp_sensor_tx_average);
-
-process_cp_button:
-	if (skip_cp_button)
-		goto exit;
-free_buffers:
-	if (ret) {
-		if (!skip_cp_sensor) {
-			kfree(*sensor_rx_raw_data);
-			kfree(*sensor_tx_raw_data);
-			kfree(*cp_sensor_rx_data);
-			kfree(*cp_sensor_tx_data);
-			*sensor_rx_raw_data = NULL;
-			*sensor_tx_raw_data = NULL;
-			*cp_sensor_rx_data = NULL;
-			*cp_sensor_tx_data = NULL;
-		}
-	}
-
-exit:
-	return ret;
-}
-
-static int validate_cp_test_results_gen6(struct configuration *configuration,
-		struct result *result, uint32_t tx_num, uint32_t rx_num,
-		bool skip_cp_sensor,
-		int *cp_sensor_rx_data, int *cp_sensor_tx_data,
-		int cp_sensor_rx_calibration,
-		int cp_sensor_tx_calibration,
-		int cp_sensor_rx_average, int cp_sensor_tx_average,
-		int cp_sensor_rx_delta,
-		int cp_sensor_tx_delta,
-		bool *pass)
-{
-	uint32_t i=0;
-	uint32_t configuration_rx_num;
-	uint32_t configuration_tx_num;
-	result->cp_test_pass = true;
-	configuration_rx_num=configuration->cp_min_max_table_rx_size/2;
-	configuration_tx_num=configuration->cp_min_max_table_tx_size/2;
-
-	/* Check Sensor Cp delta for range limit */
-	result->cp_sensor_delta_pass = true;
-	if ((cp_sensor_rx_delta > configuration->cp_max_delta_sensor_rx_percent)
-			|| (cp_sensor_tx_delta >
-				configuration->cp_max_delta_sensor_tx_percent)) {
-		tp_log_err("%s: Cp_sensor_rx_delta:%d(%d) Cp_sensor_tx_delta:%d (%d)\n",
-				"Cp sensor delta range limit test",
-				cp_sensor_rx_delta,
-				configuration->cp_max_delta_sensor_rx_percent,
-				cp_sensor_tx_delta,
-				configuration->cp_max_delta_sensor_tx_percent);
-		result->cp_sensor_delta_pass = false;
-	}
-
-	/* Check sensor Cp rx for min/max values */
-	result->cp_rx_validation_pass = true;
-	for (i = 0; i < configuration_rx_num; i++) {
-		int cp_rx_min =
-			configuration->cp_min_max_table_rx[i * 2];
-		int cp_rx_max =
-			configuration->cp_min_max_table_rx[i * 2 + 1];
-		if ((cp_sensor_rx_data[i] <= cp_rx_min)
-				|| (cp_sensor_rx_data[i] >= cp_rx_max)) {
-			tp_log_err("%s: Cp Rx[%d]:%d (%d,%d)\n",
-					"Cp Rx min/max test",
-					i,
-					(int)cp_sensor_rx_data[i],
-					cp_rx_min, cp_rx_max);
-			result->cp_rx_validation_pass = false;
-		}
-	}
-	/* Check sensor Cp tx for min/max values */
-	result->cp_tx_validation_pass = true;
-	for (i = 0; i < configuration_tx_num; i++) {
-		int cp_tx_min =
-			configuration->cp_min_max_table_tx[i * 2];
-		int cp_tx_max =
-			configuration->cp_min_max_table_tx[i * 2 + 1];
-		if ((cp_sensor_tx_data[i] <= cp_tx_min)
-				|| (cp_sensor_tx_data[i] >= cp_tx_max)) {
-			tp_log_err("%s: Cp Tx[%d]:%d(%d,%d)\n",
-					"Cp Tx min/max test",
-					i,
-					(int)cp_sensor_tx_data[i],
-					cp_tx_min, cp_tx_max);
-			result->cp_tx_validation_pass = false;
-		}
-	}
-
-	result->cp_test_pass &= result->cp_sensor_delta_pass
-			& result->cp_rx_validation_pass
-			& result->cp_tx_validation_pass;
-
-	if (pass)
-		*pass = result->cp_test_pass;
-
-	return 0;
-}
-
-
 
 static int calculate_cp(int sensor_self_rawdata, int sensor_self_localpwc, int int_cap_self, int idac_lsb, int vref,
       int giadc_val, int scaling_factor_self, int clk, int vtx, int mtx_sum)
@@ -2224,7 +1065,7 @@ static int get_cp_uniformity_test_results(int vdda, uint16_t tx_num,
         tp_log_err("%s, Unable to lookup sum\n", __func__);
         goto restore_multi_tx;
     }
-    
+
     tp_log_info("%s: mtx_sum: %d\n", __func__, mtx_sum);
 
     /* Step 7: Perform calibration */
@@ -2323,7 +1164,7 @@ static int get_cp_uniformity_test_results(int vdda, uint16_t tx_num,
     tp_log_info("%s: sensor_self_localpwc[0..%d]:\n", __func__,
             sensor_element_num + 2 - 1);
     printk("RX_idac:%d, TX_idac:%d\n", sensor_self_localpwc[0], sensor_self_localpwc[1]);
-    
+
     for( i = 2 ; i < sensor_element_num + 2; i++) {
         printk("%6d", sensor_self_localpwc[i]);
         if((i - 1)%rx_num  == 0)
@@ -2338,6 +1179,8 @@ static int get_cp_uniformity_test_results(int vdda, uint16_t tx_num,
     tp_log_info("begin calculate_cp\n");
     /* Step 5 and 6: Calculate Cm_sensor and Cm_sensor_ave */
     *cp_sensor_average = 0;
+
+
     for (i = 0; i < rx_num; i++) {
         (*cp_sensor_rx_data)[i] = calculate_cp((*sensor_rx_raw_data)[i], sensor_self_localpwc[2 + i], int_cap_self,
                               idac_lsb, vref, gidac_rx_val, scaling_factor_self ,
@@ -2352,12 +1195,12 @@ static int get_cp_uniformity_test_results(int vdda, uint16_t tx_num,
     }
 
     *cp_sensor_average /= sensor_element_num;
-    
+
     tp_log_info("%s: cp_sensor_data[0..%d]:\n", __func__,
             sensor_element_num - 1);
     for (i = 0; i < rx_num; i++)
         printk("%6d", (*cp_sensor_rx_data)[i]);
-        printk("\n");
+	printk("\n");
     for (i = 0; i < tx_num; i++)
         printk("%6d", (*cp_sensor_tx_data)[i]);
     printk("\n");
@@ -2554,14 +1397,14 @@ static int validate_cm_test_results(struct configuration *configuration,uint32_t
     int cm_ave_exclude_edge ;
     int cm_data ;
 
-    if(!configuration || !result || !cm_sensor_data ) {
+	if(!configuration || !result || !cm_sensor_data ) {
         tp_log_err("%s, param invalid\n", __func__);
         ret = -EINVAL;
         goto exit;
     }
     sensor_num = tx_num *rx_num;
     tp_log_info("%s, sensor_num= %d\n", __func__, sensor_num);
-    
+
     configuration_sensor_num =
                 configuration->cm_min_max_table_sensor_size / 2;
     configuration_button_num =
@@ -2592,6 +1435,7 @@ static int validate_cm_test_results(struct configuration *configuration,uint32_t
             sensor_data_max = configuration->cm_min_max_table_sensor[2 * index + 1];
             if(cm_sensor_data[index] < sensor_data_min||
                 cm_sensor_data[index] > sensor_data_max) {
+
                 tp_log_err("%s, cm_sensor min_max failed,sensor[%d][%d] = %d, overflow [%d, %d]\n",
                     __func__ , i, j, cm_sensor_data[index], sensor_data_min, sensor_data_max);
                 result->cm_sensor_validation_pass = false;
@@ -2605,7 +1449,7 @@ static int validate_cm_test_results(struct configuration *configuration,uint32_t
     if(*gd_sensor_col == NULL) {
         tp_log_err("failed to malloc for gd_sensor_col\n");
         goto exit;
-    } 
+    }
     *gd_sensor_row =  (struct gd_sensor *)kzalloc(rx_num * sizeof(struct gd_sensor), GFP_KERNEL);
     if(*gd_sensor_row == NULL) {
         tp_log_err("failed to malloc for gd_sensor_row\n");
@@ -2615,11 +1459,11 @@ static int validate_cm_test_results(struct configuration *configuration,uint32_t
         /*re-initialize for a new row*/
         cm_max = (cm_sensor_data)[j];
         cm_min =  cm_max;
-        cm_ave = 0;    
+        cm_ave = 0;
         cm_max_exclude_edge = (cm_sensor_data)[rx_num + j];
         cm_min_exclude_edge =  cm_max_exclude_edge;
         cm_ave_exclude_edge = 0;
-        //DEBUG_PRINTF("wuyu initialization:cm_max=%d, cm_max_exclude_edge=%d\n ", cm_max, cm_max_exclude_edge);    
+        //DEBUG_PRINTF("wuyu initialization:cm_max=%d, cm_max_exclude_edge=%d\n ", cm_max, cm_max_exclude_edge);
         for (i = 0; i < tx_num; i++) {
             cm_data = (cm_sensor_data)[i * rx_num + j];
             if (cm_data > cm_max)
@@ -2638,18 +1482,17 @@ static int validate_cm_test_results(struct configuration *configuration,uint32_t
         }
         cm_ave /= tx_num;
         cm_ave_exclude_edge /= (tx_num-2);
-        fill_gd_sensor_table(*gd_sensor_row, j, cm_max, cm_min, cm_ave, 
+        fill_gd_sensor_table(*gd_sensor_row, j, cm_max, cm_min, cm_ave,
             cm_max_exclude_edge, cm_min_exclude_edge, cm_ave_exclude_edge);
     }
 
-    result->cm_sensor_row_gradient_pass= true;
-    calculate_gradient_row(*gd_sensor_row, rx_num, 
+    result->cm_sensor_row_delta_pass = true;
+    calculate_gradient_row(*gd_sensor_row, rx_num,
             configuration->cm_excluding_row_edge, configuration->cm_excluding_col_edge);
     for (i = 0;i < configuration->cm_gradient_check_row_size; i++) {
-        if((*gd_sensor_row + i)->gradient_val > configuration->cm_gradient_check_row[i]
-             || (*gd_sensor_row + i)->gradient_val < 0) {
+        if((*gd_sensor_row + i)->gradient_val > configuration->cm_gradient_check_row[i]) {
             tp_log_err("%s cm_max_table_gradient_row_percent[%d]:%d, gradient_val:%d\n", __func__, i, configuration->cm_gradient_check_row[i], (*gd_sensor_row + i)->gradient_val );
-            tp_log_debug("%s:row[%d] cm_max:%d cm_min:%d cm_ave:%d cm_max_exclude_edge:%d  cm_min_exclude_edge:%d cm_ave_exclude_edge:%d gradient_val=%d \n", 
+            tp_log_debug("%s:row[%d] cm_max:%d cm_min:%d cm_ave:%d cm_max_exclude_edge:%d  cm_min_exclude_edge:%d cm_ave_exclude_edge:%d gradient_val=%d \n",
             __func__, i,
             (*gd_sensor_row + i)->cm_max,
             (*gd_sensor_row + i)->cm_min,
@@ -2658,7 +1501,7 @@ static int validate_cm_test_results(struct configuration *configuration,uint32_t
             (*gd_sensor_row + i)->cm_min_exclude_edge,
             (*gd_sensor_row + i)->cm_ave_exclude_edge,
             (*gd_sensor_row + i)->gradient_val);
-            result->cm_sensor_row_gradient_pass = false;
+            result->cm_sensor_row_delta_pass = false;
         }
     }
     printk("gd_sensor_row:\n");
@@ -2671,11 +1514,11 @@ static int validate_cm_test_results(struct configuration *configuration,uint32_t
         /*re-initialize for a new col*/
         cm_max = (cm_sensor_data)[i * rx_num];
         cm_min = cm_max;
-        cm_ave = 0;    
+        cm_ave = 0;
         cm_max_exclude_edge = (cm_sensor_data)[i * rx_num + 1];
         cm_min_exclude_edge = cm_max_exclude_edge;
         cm_ave_exclude_edge = 0;
-        
+
         for (j = 0; j < rx_num; j++) {
             cm_data = (cm_sensor_data)[i * rx_num + j];
             if (cm_data > cm_max)
@@ -2694,18 +1537,17 @@ static int validate_cm_test_results(struct configuration *configuration,uint32_t
         }
         cm_ave /= rx_num;
         cm_ave_exclude_edge /= (rx_num-2);
-        fill_gd_sensor_table(*gd_sensor_col, i, cm_max, cm_min, cm_ave, 
+        fill_gd_sensor_table(*gd_sensor_col, i, cm_max, cm_min, cm_ave,
             cm_max_exclude_edge, cm_min_exclude_edge, cm_ave_exclude_edge);
     }
-    
-    result->cm_sensor_col_gradient_pass = true;
-    calculate_gradient_col(*gd_sensor_col, tx_num, 
+
+    result->cm_sensor_col_delta_pass = true;
+    calculate_gradient_col(*gd_sensor_col, tx_num,
             configuration->cm_excluding_row_edge, configuration->cm_excluding_col_edge);
     for (i = 0;i < configuration->cm_gradient_check_col_size; i++) {
-        if((*gd_sensor_col + i)->gradient_val > configuration->cm_gradient_check_col[i]
-            || (*gd_sensor_col + i)->gradient_val < 0) {
+        if((*gd_sensor_col + i)->gradient_val > configuration->cm_gradient_check_col[i]) {
             tp_log_err("%s cm_max_table_gradient_col_percent[%d]:%d, gradient_val:%d\n", __func__, i, configuration->cm_gradient_check_col[i], (*gd_sensor_col + i)->gradient_val );
-            tp_log_debug("%s:col[%d] cm_max:%d cm_min:%d cm_ave:%d cm_max_exclude_edge:%d  cm_min_exclude_edge:%d cm_ave_exclude_edge:%d gradient_val=%d \n", 
+            tp_log_debug("%s:col[%d] cm_max:%d cm_min:%d cm_ave:%d cm_max_exclude_edge:%d  cm_min_exclude_edge:%d cm_ave_exclude_edge:%d gradient_val=%d \n",
             __func__, i,
             (*gd_sensor_col + i)->cm_max,
             (*gd_sensor_col + i)->cm_min,
@@ -2714,7 +1556,7 @@ static int validate_cm_test_results(struct configuration *configuration,uint32_t
             (*gd_sensor_col + i)->cm_min_exclude_edge,
             (*gd_sensor_col + i)->cm_ave_exclude_edge,
             (*gd_sensor_col + i)->gradient_val);
-            result->cm_sensor_col_gradient_pass = false;
+            result->cm_sensor_col_delta_pass = false;
         }
     }
     printk("gd_sensor_col:\n");
@@ -2724,8 +1566,8 @@ static int validate_cm_test_results(struct configuration *configuration,uint32_t
     printk("\n");
 
     result->cm_test_pass = result->cm_sensor_validation_pass &&
-                           result->cm_sensor_col_gradient_pass &&
-                           result->cm_sensor_row_gradient_pass;
+                           result->cm_sensor_col_delta_pass &&
+                           result->cm_sensor_row_delta_pass;
 
     *pass = result->cm_test_pass;
     tp_log_info("cm_test:%d, result cm_test:%d\n", *pass, result->cm_test_pass);
@@ -2734,11 +1576,11 @@ static int validate_cm_test_results(struct configuration *configuration,uint32_t
 
 exit:
     return ret;
-        
+
 }
 
 static int validate_cp_test_results(struct configuration* configuration, struct result* result,
-                int tx_num, int rx_num, int button_num, 
+                int tx_num, int rx_num, int button_num,
                 bool skip_cp_sensor, bool skip_cp_button,
                 int *cp_sensor_rx_data, int *cp_sensor_tx_data,
                 bool *cp_test_pass)
@@ -2765,7 +1607,7 @@ static int validate_cp_test_results(struct configuration* configuration, struct 
     }
     sensor_num = tx_num  + rx_num;
     tp_log_info("%s, sensor_num= %d\n", __func__, sensor_num);
-    
+
     configuration_rx_sensor_num =
                 configuration->cp_min_max_table_rx_size / 2;
     configuration_tx_sensor_num =
@@ -2782,7 +1624,7 @@ static int validate_cp_test_results(struct configuration* configuration, struct 
         ret = -EINVAL;
         goto exit;
     }
-        
+
     if (!skip_cp_button && (button_num != configuration_button_num)) {
         tp_log_err("%s: Configuration and Device number of buttons mismatch! (Configuration:%d, Device:%d)\n",
             __func__, configuration_button_num,
@@ -2796,10 +1638,10 @@ static int validate_cp_test_results(struct configuration* configuration, struct 
     for(i = 0; i < rx_num; i++){
         min_rx_sensor = configuration->cp_min_max_table_rx[2*i];
         max_rx_sensor = configuration->cp_min_max_table_rx[2*i + 1];
-        if(cp_sensor_rx_data[i] > max_rx_sensor || 
+        if(cp_sensor_rx_data[i] > max_rx_sensor ||
             cp_sensor_rx_data[i] < min_rx_sensor) {
             tp_log_err("%s, rx[%d],cp_data[%d],over range[%d, %d]\n",
-                __func__, i, cp_sensor_rx_data[i], 
+                __func__, i, cp_sensor_rx_data[i],
                 min_rx_sensor, max_rx_sensor);
             result->cp_rx_validation_pass = false;
         }
@@ -2810,10 +1652,10 @@ static int validate_cp_test_results(struct configuration* configuration, struct 
     for(i = 0; i < tx_num; i++){
         min_tx_sensor = configuration->cp_min_max_table_tx[2*i];
         max_tx_sensor = configuration->cp_min_max_table_tx[2*i + 1];
-        if(cp_sensor_tx_data[i] > max_tx_sensor || 
+        if(cp_sensor_tx_data[i] > max_tx_sensor ||
             cp_sensor_tx_data[i] < min_tx_sensor) {
             tp_log_err("%s, tx[%d],cp_data[%d],over range[%d, %d]\n",
-                __func__, i, cp_sensor_tx_data[i], 
+                __func__, i, cp_sensor_tx_data[i],
                 min_tx_sensor, max_tx_sensor);
             result->cp_tx_validation_pass = false;
         }
@@ -2843,21 +1685,15 @@ int cm_cp_test_run(char *device_path, struct file *parameter_file,
     int32_t *cm_sensor_raw_data = NULL;
     int *cm_sensor_data = NULL;
     //int *cm_sensor_column_delta = NULL, *cm_sensor_row_delta = NULL;
-    int *cm_sensor_column_delta = NULL, *cm_sensor_row_delta = NULL;
     struct gd_sensor *cm_gradient_col = NULL, *cm_gradient_row = NULL;
     int cm_sensor_average;
-    int cm_sensor_calibration;
-    int cm_sensor_delta;
     int32_t *cp_sensor_rx_raw_data = NULL, *cp_sensor_tx_raw_data = NULL;
     int *cp_sensor_rx_data = NULL, *cp_sensor_tx_data = NULL;
-    int cp_sensor_rx_calibration, cp_sensor_tx_calibration;
-    int cp_sensor_rx_average, cp_sensor_tx_average;
     //int cp_sensor_rx_average, cp_sensor_tx_average;
     int cp_sensor_average;
-    int cp_sensor_rx_delta, cp_sensor_tx_delta;
     int ret = 0;
     tp_log_info("%s: begin\n" ,__func__ );
-    
+
     configuration = kzalloc(sizeof(struct configuration), GFP_KERNEL);
     result = kzalloc(sizeof(struct result), GFP_KERNEL);
     if (!configuration || !result) {
@@ -2931,175 +1767,63 @@ int cm_cp_test_run(char *device_path, struct file *parameter_file,
     if (run_cm_test && skip_cm_button)
         tp_log_info("%s:Cm button test is skipped\n",__func__);
 
-    tp_log_info("%s, family type:%d\n", __func__, configuration->family_type);
-
     if (run_cm_test) {
-        if(configuration->family_type == 0) {
-            ret = get_cm_uniformity_test_results(vdda, tx_num, rx_num,
-                    button_num, skip_cm_button,
-                    &cm_sensor_raw_data,
-                    &cm_sensor_data,
-                    &cm_sensor_average);
-            if (ret) {
-                tp_log_err("%s:Unable to run Cm uniformity test!\n",__func__);
-                goto err_get_cm_test_results;
-            }
-
-            ret = validate_cm_test_results(configuration,button_num,result,
-                tx_num,rx_num,skip_cm_button,cm_sensor_data,sensor_assignment,
-                &cm_gradient_col, &cm_gradient_row,
-                cm_test_pass);
-            if (ret) {
-                tp_log_err("%s:Unable to validate_cm_test_results!\n",__func__);
-                goto err_validate_cm_test_results;
-            }
-
-            result->cm_sensor_data = cm_sensor_data;
-            result->cm_sensor_raw_data = cm_sensor_raw_data;
-            result->cm_gradient_col = cm_gradient_col;
-            result->cm_gradient_row = cm_gradient_row;
-        }else {
-            ret = get_cm_uniformity_test_results_gen6(vdda, tx_num, rx_num,
+        ret = get_cm_uniformity_test_results(vdda, tx_num, rx_num,
                 button_num, skip_cm_button,
                 &cm_sensor_raw_data,
                 &cm_sensor_data,
                 &cm_sensor_average);
-            if (ret) {
-                //seq_printf(result_file, "3F -software_reason", strlen("3F -software_reason"));
-                tp_log_err("%s:Unable to run Cm uniformity test gen6!\n",__func__);
-                goto err_get_cm_test_results;
-            }
-
-            ret = get_cm_calibration_check_test_results_gen6(vdda,
-                    skip_cm_button, &cm_sensor_calibration);
-            if (ret) {
-                //seq_printf(result_file, "3F -software_reason", strlen("3F -software_reason"));
-                tp_log_err("%s:Unable to run Cm calibration check test gen6!\n",__func__);
-                goto err_get_cm_test_results;
-            }
-
-            cm_sensor_delta = ABS((cm_sensor_average -
-                        cm_sensor_calibration)*100/cm_sensor_average);
-
-            tp_log_info("%s: cm_sensor_delta: %d\n", __func__,
-                       cm_sensor_delta);
-
-            ret = validate_cm_test_results_gen6(configuration, result, tx_num,
-                       rx_num, button_num, skip_cm_button,
-                       cm_sensor_data,
-                       cm_sensor_calibration,
-                       cm_sensor_average,
-                       cm_sensor_delta,
-                       &cm_sensor_column_delta, &cm_sensor_row_delta,
-                       cm_test_pass);
-            if (ret) {
-                //seq_printf(result_file, "3F -software_reason", strlen("3F -software_reason"));
-                tp_log_err("%s:Fail validating Cm test results!\n",__func__);
-                goto err_validate_cm_test_results;
-            }
-            result->cm_sensor_data = cm_sensor_data;
-            result->cm_sensor_raw_data = cm_sensor_raw_data;
-            result->cm_sensor_column_delta = cm_sensor_column_delta;
-            result->cm_sensor_row_delta = cm_sensor_row_delta;
-            result->cm_sensor_calibration = cm_sensor_calibration;
-            result->cm_sensor_average = cm_sensor_average;
-            result->cm_sensor_delta = cm_sensor_delta;
-
+        if (ret) {
+            tp_log_err("%s:Unable to run Cm uniformity test!\n",__func__);
+            goto err_get_cm_test_results;
         }
-    
+
+        ret = validate_cm_test_results(configuration,button_num,result,
+            tx_num,rx_num,skip_cm_button,cm_sensor_data,sensor_assignment,
+            &cm_gradient_col, &cm_gradient_row,
+            cm_test_pass);
+        if (ret) {
+            tp_log_err("%s:Unable to validate_cm_test_results!\n",__func__);
+            goto err_validate_cm_test_results;
+        }
+
+        result->cm_sensor_data = cm_sensor_data;
+        result->cm_sensor_raw_data = cm_sensor_raw_data;
+        result->cm_gradient_col = cm_gradient_col;
+        result->cm_gradient_row = cm_gradient_row;
+
     }
-    
+
     if (run_cp_test) {
-        if(configuration->family_type == 0) {
-            ret = get_cp_uniformity_test_results(vdda,tx_num,
-            rx_num, button_num, skip_cp_button,
-            skip_cp_sensor,
-            &cp_sensor_tx_raw_data, &cp_sensor_rx_raw_data,
-            &cp_sensor_tx_data, &cp_sensor_rx_data,
-            &cp_sensor_average);
-            if (ret) {
-                tp_log_err("%s:Unable to run Cp uniformity check test!\n",__func__);
-                goto err_get_cp_test_results;
-            }
+        ret = get_cp_uniformity_test_results(vdda,tx_num,
+        rx_num, button_num, skip_cp_button,
+        skip_cp_sensor,
+        &cp_sensor_tx_raw_data, &cp_sensor_rx_raw_data,
+        &cp_sensor_tx_data, &cp_sensor_rx_data,
+        &cp_sensor_average);
+        if (ret) {
+            tp_log_err("%s:Unable to run Cp uniformity check test!\n",__func__);
+            goto err_get_cp_test_results;
+        }
 
-            if (!skip_cp_sensor) {
-                result->cp_sensor_rx_data = cp_sensor_rx_data;
-                result->cp_sensor_tx_data = cp_sensor_tx_data;
-                result->cp_sensor_rx_raw_data = cp_sensor_rx_raw_data;
-                result->cp_sensor_tx_raw_data = cp_sensor_tx_raw_data;
-                result->cp_sensor_rx_average =
-                        cp_sensor_average;
-                result->cp_sensor_tx_average =
-                        cp_sensor_average;
-            }
-            ret = validate_cp_test_results(configuration, result, tx_num,
-                    rx_num, button_num, skip_cp_sensor,
-                    skip_cp_button, cp_sensor_rx_data,
-                    cp_sensor_tx_data,
-                    cp_test_pass);
-            if (ret) {
-                tp_log_err("%s:Fail validating Cp test results!\n",__func__);
-                goto free_buffers;
-            }
-        } else {
-            ret = get_cp_calibration_check_test_results_gen6(tx_num, rx_num,
-            button_num, skip_cp_sensor, skip_cp_button,
-            &cp_sensor_tx_raw_data, &cp_sensor_rx_raw_data,
-            &cp_sensor_tx_data,
-            &cp_sensor_rx_data,
-            &cp_sensor_tx_average, &cp_sensor_rx_average,
-            &cp_sensor_rx_calibration,
-            &cp_sensor_tx_calibration);
-            if (ret) {
-                //seq_printf(result_file, "4F -software_reason", strlen("4F -software_reason"));
-                tp_log_err("%s:Unable to run Cp calibration check test!\n",__func__);
-                goto err_get_cp_test_results;
-            }
-
-            if (!skip_cp_sensor) {
-                cp_sensor_rx_delta = ABS((cp_sensor_rx_calibration -
-                            cp_sensor_rx_average) *100/
-                            cp_sensor_rx_average);
-
-                cp_sensor_tx_delta = ABS((cp_sensor_tx_calibration -
-                            cp_sensor_tx_average)*100 /
-                            cp_sensor_tx_average);
-                tp_log_info("cp_sensor_rx_calibration: %d,cp_sensor_rx_average:%d\n", cp_sensor_rx_calibration,cp_sensor_rx_average);
-                tp_log_info("cp_sensor_tx_calibration: %d,cp_sensor_tx_average:%d\n", cp_sensor_tx_calibration,cp_sensor_tx_average);
-                tp_log_info("%s: cp_sensor_rx_delta: %d\n", __func__,cp_sensor_rx_delta);
-                tp_log_info("%s: cp_sensor_tx_delta: %d\n", __func__,cp_sensor_tx_delta);
-
-                result->cp_sensor_rx_data = cp_sensor_rx_data;
-                result->cp_sensor_tx_data = cp_sensor_tx_data;
-                result->cp_sensor_rx_raw_data = cp_sensor_rx_raw_data;
-                result->cp_sensor_tx_raw_data = cp_sensor_tx_raw_data;
-                result->cp_sensor_rx_delta = cp_sensor_rx_delta;
-                result->cp_sensor_tx_delta = cp_sensor_tx_delta;
-                result->cp_sensor_rx_average =
-                        cp_sensor_rx_average;
-                result->cp_sensor_tx_average =
-                        cp_sensor_tx_average;
-                result->cp_sensor_rx_calibration=
-                        cp_sensor_rx_calibration;
-                result->cp_sensor_tx_calibration=
-                        cp_sensor_tx_calibration;
-            }
-
-            ret = validate_cp_test_results_gen6(configuration, result, tx_num,
-                rx_num, skip_cp_sensor,
-                cp_sensor_rx_data,
+        if (!skip_cp_sensor) {
+            result->cp_sensor_rx_data = cp_sensor_rx_data;
+            result->cp_sensor_tx_data = cp_sensor_tx_data;
+            result->cp_sensor_rx_raw_data = cp_sensor_rx_raw_data;
+            result->cp_sensor_tx_raw_data = cp_sensor_tx_raw_data;
+            result->cp_sensor_rx_average =
+                    cp_sensor_average;
+            result->cp_sensor_tx_average =
+                    cp_sensor_average;
+        }
+        ret = validate_cp_test_results(configuration, result, tx_num,
+                rx_num, button_num, skip_cp_sensor,
+                skip_cp_button, cp_sensor_rx_data,
                 cp_sensor_tx_data,
-                cp_sensor_rx_calibration,
-                cp_sensor_tx_calibration,
-                cp_sensor_rx_average, cp_sensor_tx_average,
-                cp_sensor_rx_delta,
-                cp_sensor_tx_delta,
                 cp_test_pass);
-            if (ret) {
-                //seq_printf(result_file, "7F -software_reason", strlen("7F -software_reason"));
-                tp_log_err("%s:Fail validating Cp test results!\n",__func__);
-                goto free_buffers;
-            }
+        if (ret) {
+            tp_log_err("%s:Fail validating Cp test results!\n",__func__);
+            goto free_buffers;
         }
     }
 
@@ -3139,7 +1863,7 @@ err_get_cp_test_results:
         }
     }
 err_validate_cm_test_results:
-err_get_cm_test_results:    
+err_get_cm_test_results:
     if (run_cm_test) {
         kfree(cm_sensor_raw_data);
         cm_sensor_raw_data = NULL;
@@ -3147,24 +1871,12 @@ err_get_cm_test_results:
         kfree(cm_sensor_data);
         cm_sensor_data = NULL;
 
-        if(configuration->family_type == 0) {
-            kfree(cm_gradient_col);
-            cm_gradient_col = NULL;
+        kfree(cm_gradient_col);
+        cm_gradient_col = NULL;
 
-            kfree(cm_gradient_row);
-            cm_gradient_row = NULL;
-        } else {
-            kfree(result->cm_gradient_col);
-            cm_gradient_col = NULL;
+        kfree(cm_gradient_row);
+        cm_gradient_row = NULL;
 
-            kfree(result->cm_gradient_row);
-            cm_gradient_row = NULL;
-
-            kfree(cm_sensor_row_delta);
-            kfree(cm_sensor_column_delta);
-            cm_sensor_row_delta = NULL;
-            cm_sensor_column_delta = NULL;
-        }
     }
 
 resume_scanning:

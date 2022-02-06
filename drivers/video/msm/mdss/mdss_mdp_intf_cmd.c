@@ -753,6 +753,8 @@ static int mdss_mdp_cmd_panel_on(struct mdss_mdp_ctl *ctl,
 		mdss_mdp_ctl_intf_event(ctl,
 			MDSS_EVENT_REGISTER_RECOVERY_HANDLER,
 			(void *)&ctx->intf_recovery);
+
+		ctx->intf_stopped = 0;
 	} else {
 		pr_err("%s: Panel already on\n", __func__);
 	}
@@ -895,8 +897,6 @@ int mdss_mdp_cmd_intfs_stop(struct mdss_mdp_ctl *ctl, int session,
 #ifdef CONFIG_HUAWEI_LCD
 	mdss_dsi_status_check_ctl(ctl->mfd,false);
 #endif
-	ctx->ref_cnt--;
-
 	/* intf stopped,  no more kickoff */
 	ctx->intf_stopped = 1;
 	spin_lock_irqsave(&ctx->clk_lock, flags);
@@ -934,6 +934,11 @@ int mdss_mdp_cmd_intfs_stop(struct mdss_mdp_ctl *ctl, int session,
 	flush_work(&ctx->pp_done_work);
 	mdss_mdp_cmd_tearcheck_setup(ctl, false);
 
+	if (mdss_panel_is_power_on(panel_power_state)) {
+		pr_debug("%s: intf stopped with panel on\n", __func__);
+		goto end;
+	}
+
 	mdss_mdp_set_intr_callback(MDSS_MDP_IRQ_PING_PONG_RD_PTR,
 		ctx->pp_num, NULL, NULL);
 	mdss_mdp_set_intr_callback(MDSS_MDP_IRQ_PING_PONG_COMP,
@@ -941,6 +946,7 @@ int mdss_mdp_cmd_intfs_stop(struct mdss_mdp_ctl *ctl, int session,
 
 	memset(ctx, 0, sizeof(*ctx));
 
+end:
 	pr_debug("%s:-\n", __func__);
 
 	return 0;
@@ -959,17 +965,6 @@ static int mdss_mdp_cmd_stop_sub(struct mdss_mdp_ctl *ctl,
 		return -ENODEV;
 	}
 
-	/* if power state already updated, skip this */
-	if (ctx->panel_power_state == panel_power_state)
-		return 0;
-
-	/*
-	 * If the panel will be left on, then we do not need to turn off
-	 * interface clocks since we may continue to get display updates.
-	 */
-	if (mdss_panel_is_power_on(panel_power_state))
-		return 0;
-
 	list_for_each_entry_safe(handle, tmp, &ctx->vsync_handlers, list)
 		mdss_mdp_cmd_remove_vsync_handler(ctl, handle);
 	MDSS_XLOG(ctl->num, atomic_read(&ctx->koff_cnt), ctx->clk_enabled,
@@ -984,6 +979,9 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl, int panel_power_state)
 {
 	struct mdss_mdp_cmd_ctx *ctx = ctl->priv_data;
 	struct mdss_mdp_ctl *sctl = mdss_mdp_get_split_ctl(ctl);
+	bool panel_off = false;
+	bool turn_off_clocks = false;
+	bool send_panel_events = false;
 	int ret = 0;
 
 	if (!ctx) {
@@ -991,8 +989,64 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl, int panel_power_state)
 		return -ENODEV;
 	}
 
+	if (ctx->panel_power_state == panel_power_state)
+		return 0;
+
+	if (__mdss_mdp_cmd_is_panel_power_off(ctx)) {
+		pr_debug("%s: panel already off\n", __func__);
+		return 0;
+	}
+
+	if (ctx->panel_power_state == panel_power_state) {
+		pr_debug("%s: no transition needed %d --> %d\n", __func__,
+			 ctx->panel_power_state, panel_power_state);
+		return 0;
+	}
+
+	pr_debug("%s: transition from %d --> %d\n", __func__,
+		 ctx->panel_power_state, panel_power_state);
+
 	mutex_lock(&ctl->offlock);
-	if (ctx->panel_power_state != panel_power_state) {
+	if (__mdss_mdp_cmd_is_panel_power_on_interactive(ctx)) {
+		if (mdss_panel_is_power_on_lp(panel_power_state)) {
+			/*
+			* If we are transitioning from interactive to low
+			* power, then we need to send events to the interface
+			* so that the panel can be configured in low power
+			* mode.
+			*/
+			send_panel_events = true;
+			if (mdss_panel_is_power_on_ulp(panel_power_state))
+				turn_off_clocks = true;
+		} else if (mdss_panel_is_power_off(panel_power_state)) {
+			send_panel_events = true;
+			turn_off_clocks = true;
+			panel_off = true;
+		}
+			} else {
+				if (mdss_panel_is_power_on_ulp(panel_power_state)) {
+					/*
+					* If we are transitioning from low power to ultra low
+					* power mode, no more display updates are expected.
+					* Turn off the interface clocks.
+					*/
+					pr_debug("%s: turn off clocks\n", __func__);
+					turn_off_clocks = true;
+				} else {
+					/*
+					 * Transition from ultra low power to low power does
+					 * not require any special handling. The clocks would
+					 * get turned on when the first update comes.
+					 */
+					pr_debug("%s: nothing to be done.\n", __func__);
+					goto end;
+				}
+		}
+
+		if (!turn_off_clocks)
+			goto panel_events;
+
+		pr_debug("%s: turn off interface clocks\n", __func__);
 		ret = mdss_mdp_cmd_stop_sub(ctl, panel_power_state);
 		if (IS_ERR_VALUE(ret)) {
 			pr_err("%s: unable to stop interface: %d\n",
@@ -1009,6 +1063,10 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl, int panel_power_state)
 			}
 		}
 
+panel_events:
+	if ((ctl->num == 0) && send_panel_events) {
+		pr_debug("%s: send panel events\n", __func__);
+
 		ret = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_BLANK,
                                       (void *) (long int) panel_power_state);
 		WARN(ret, "intf %d unblank error (%d)\n", ctl->intf_num, ret);
@@ -1020,11 +1078,12 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl, int panel_power_state)
 
 	ctx->panel_power_state = panel_power_state;
 
-	if (mdss_panel_is_power_on(panel_power_state)) {
-		pr_debug("%s: cmd_stop with panel always on\n", __func__);
-		goto end;
+	if (!panel_off) {
+	    pr_debug("%s: cmd_stop with panel always on\n", __func__);
+	    goto end;
 	}
-
+	pr_debug("%s: turn off panel\n", __func__);
+	memset(ctx, 0, sizeof(*ctx));
 	ctl->priv_data = NULL;
 	ctl->stop_fnc = NULL;
 	ctl->display_fnc = NULL;

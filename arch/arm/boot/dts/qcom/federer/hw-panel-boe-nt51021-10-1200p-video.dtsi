@@ -120,16 +120,17 @@
 29 01 00 00 00 00 0B E3 F3 F3 EC EC EC E7 E7 E7 DF DF
 15 01 00 00 00 00 02 53 2C];
 		qcom,panel-cabc-video-cmds = [29 01 00 00 00 00 06 F0 55 AA 52 08 00
-29 01 00 00 00 00 0B E3 F0 D2 C3 B4 A5 96 87 87 87 81
-15 01 00 00 00 00 02 53 2C];
+            29 01 00 00 00 00 0B E3 F0 D2 C3 B4 A5 96 87 87 87 81
+            15 01 00 00 00 00 02 53 2C];
 		qcom,cabc-ui-cmds-dsi-state = "dsi_hs_mode";
 		qcom,cabc-video-cmds-dsi-state = "dsi_hs_mode";
-		qcom,mdss-pan-physical-width-dimension = <135>;
-		qcom,mdss-pan-physical-height-dimension = <217>;
 		qcom,mdss-dsi-mipi-rst-delay = <80>;
 		huawei,skip-reg-read-flag = <1>;
+		qcom,mdss-dsi-lp11-init;
+		qcom,mdss-pan-physical-width-dimension = <135>;
+		qcom,mdss-pan-physical-height-dimension = <217>;
 		huawei,product-pad-flag = <1>;
-			qcom,mdss-dsi-reset-sequence = <1 1>, <0 20>, <1 30>;
+		qcom,mdss-dsi-reset-sequence = <1 1>, <0 20>, <1 30>;
 
 	};
 };

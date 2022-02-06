@@ -87,7 +87,6 @@ enum cyttsp5_power_type {
 struct cyttsp5_power_config {
 	u8 vdd_type;
 	u8 vbus_type;
-	int vbus_value;
 	int vdd_en_gpio;
 	int vbus_en_gpio;
 	struct regulator* vdd_reg;

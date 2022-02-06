@@ -13,5 +13,3 @@ obj-$(CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP5) += result.o
 obj-$(CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP5) += hw_cm_cp_test.o
 obj-$(CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP5) += libcsv.o
 #end cm_cp test
-
-

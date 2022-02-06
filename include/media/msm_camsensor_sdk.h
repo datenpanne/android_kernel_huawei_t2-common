@@ -4,7 +4,11 @@
 #include <linux/v4l2-mediabus.h>
 
 #define KVERSION 0x1
-#define MAX_POWER_CONFIG      15 
+#ifdef CONFIG_HUAWEI_KERNEL
+#define MAX_POWER_CONFIG      15
+#else
+#define MAX_POWER_CONFIG      12
+#endif
 #define GPIO_OUT_LOW          (0 << 1)
 #define GPIO_OUT_HIGH         (1 << 1)
 #define CSI_EMBED_DATA        0x12
@@ -28,7 +32,11 @@
 #define MAX_ACTUATOR_SCENARIO     8
 #define MAX_ACT_MOD_NAME_SIZE     32
 #define MAX_ACT_NAME_SIZE         32
+#ifdef CONFIG_HUAWEI_KERNEL
 #define MAX_ACTUATOR_INIT_SET     12
+#else
+#define MAX_ACTUATOR_INIT_SET     32
+#endif
 #define MAX_I2C_REG_SET           12
 
 #define MAX_NAME_SIZE             32
@@ -63,6 +71,20 @@ enum msm_sensor_power_seq_type_t {
 	SENSOR_I2C,
 };
 
+enum msm_camera_qup_i2c_write_batch_size_t {
+	MSM_CAMERA_I2C_BATCH_SIZE_1 = 1,
+	MSM_CAMERA_I2C_BATCH_SIZE_2,
+	MSM_CAMERA_I2C_BATCH_SIZE_3,
+	MSM_CAMERA_I2C_BATCH_SIZE_4,
+	MSM_CAMERA_I2C_BATCH_SIZE_5,
+	MSM_CAMERA_I2C_BATCH_SIZE_MAX,
+};
+
+enum msm_camera_qup_i2c_write_batch_t {
+	MSM_CAMREA_I2C_BATCH_DISABLE = 0,
+	MSM_CAMERA_I2C_BATCH_ENABLE,
+};
+
 enum msm_camera_i2c_reg_addr_type {
 	MSM_CAMERA_I2C_BYTE_ADDR = 1,
 	MSM_CAMERA_I2C_WORD_ADDR,
@@ -93,11 +115,13 @@ enum msm_sensor_power_seq_gpio_t {
 	SENSOR_GPIO_FL_EN,
 	SENSOR_GPIO_FL_NOW,
 	SENSOR_GPIO_FL_RESET,
-	SENSOR_GPIO_CAM_ID,	
+#ifdef CONFIG_HUAWEI_KERNEL
+	SENSOR_GPIO_CAM_ID,
 	SENSOR_GPIO_MISP_VDD,
 	SENSOR_GPIO_DVDD_SEL,
 	SENSOR_GPIO_AF_EN,
 	SENSOR_GPIO_OIS_EN,
+#endif
 	SENSOR_GPIO_CUSTOM1,
 	SENSOR_GPIO_CUSTOM2,
 	SENSOR_GPIO_MAX,
@@ -116,8 +140,6 @@ enum msm_camera_vreg_name_t {
 enum msm_sensor_clk_type_t {
 	SENSOR_CAM_MCLK,
 	SENSOR_CAM_CLK,
-	SENSOR_MINIISP_MCLK,
-	SENSOR_MINIISP_CLK,
 	SENSOR_CAM_CLK_MAX,
 };
 
@@ -145,7 +167,6 @@ enum msm_actuator_addr_type {
 enum msm_actuator_write_type {
 	MSM_ACTUATOR_WRITE_HW_DAMP,
 	MSM_ACTUATOR_WRITE_DAC,
-	MSM_ACTUATOR_WRITE_DAC_DW9718S,
 };
 
 enum msm_actuator_i2c_operation {
@@ -172,6 +193,12 @@ enum msm_flash_cfg_type_t {
 	CFG_FLASH_OFF,
 	CFG_FLASH_LOW,
 	CFG_FLASH_HIGH,
+};
+
+enum msm_sensor_output_format_t {
+	MSM_SENSOR_BAYER,
+	MSM_SENSOR_YCBCR,
+	MSM_SENSOR_META,
 };
 
 struct msm_sensor_power_setting {
@@ -202,10 +229,13 @@ struct msm_sensor_init_params {
 
 struct msm_sensor_id_info_t {
 	uint16_t sensor_id_reg_addr;
-    enum msm_camera_i2c_data_type sensor_id_data_type;
+#ifdef CONFIG_HUAWEI_KERNEL
+	enum msm_camera_i2c_data_type sensor_id_data_type;
+#endif
 	uint16_t sensor_id;
 };
 
+#ifdef CONFIG_HUAWEI_KERNEL
 struct msm_sensor_cam_id_t
 {
 	uint8_t cam_excepted_id;
@@ -230,6 +260,8 @@ struct msm_cam_otp_vendor_info_t{
 	enum msm_camera_i2c_reg_addr_type addr_type;
 	enum msm_camera_i2c_data_type data_type;
 };
+#endif
+
 struct msm_camera_sensor_slave_info {
 	char sensor_name[32];
 	char eeprom_name[32];
@@ -245,22 +277,32 @@ struct msm_camera_sensor_slave_info {
 	uint8_t  is_init_params_valid;
 	struct msm_sensor_init_params sensor_init_params;
 	uint8_t is_flash_supported;
+#ifndef CONFIG_HUAWEI_KERNEL
+	enum msm_sensor_output_format_t output_format;
+#else
 	struct msm_sensor_cam_id_t *sensor_cam_id;
 	struct dump_reg_info_t *dump_reg_info;
 	uint16_t dump_reg_num;
 	struct msm_cam_otp_vendor_info_t *otp_vendor_info;
+#endif
 };
+
+#ifdef CONFIG_HUAWEI_KERNEL
 struct msm_camera_spi_reg_setting {
        uint8_t *param;
        uint16_t size;
        uint16_t opcode;
        uint16_t delay;
 };
+#endif
+
 struct msm_camera_i2c_reg_array {
 	uint16_t reg_addr;
 	uint16_t reg_data;
 	uint32_t delay;
+#ifdef CONFIG_HUAWEI_KERNEL
 	enum msm_camera_i2c_data_type data_type;
+#endif
 };
 
 struct msm_camera_i2c_reg_setting {
@@ -269,6 +311,9 @@ struct msm_camera_i2c_reg_setting {
 	enum msm_camera_i2c_reg_addr_type addr_type;
 	enum msm_camera_i2c_data_type data_type;
 	uint16_t delay;
+#ifndef CONFIG_HUAWEI_KERNEL
+	enum msm_camera_qup_i2c_write_batch_t qup_i2c_batch;
+#endif
 };
 
 struct msm_camera_csid_vc_cfg {

@@ -45,7 +45,7 @@
 #include "../cyttsp5_regs.h"
 #include "../cyttsp5_core.h"
 #include <linux/slab.h>
-#include <linux/uaccess.h> 
+#include <linux/uaccess.h>
 //#define ARRAY_SIZE(x)		sizeof(x)/sizeof(x[0])
 
 struct parameter_enumeration {
@@ -547,7 +547,7 @@ static void field_read_callback(void *s, size_t len, void *d)
         if (ret) {
             tp_log_err("%s: Parameter Enumeration Index:%d\n", __func__,
                     index);
-    	    goto error;
+	    goto error;
         }
 #ifdef VDEBUG
         switch (data->current_parameter->type) {
@@ -582,7 +582,7 @@ static void field_read_callback(void *s, size_t len, void *d)
 
 error:
     data->error = ret;
-    parser_set_state(data, ERROR);    
+    parser_set_state(data, ERROR);
 }
 
 static void end_of_record_callback(int c, void *d)
@@ -590,7 +590,7 @@ static void end_of_record_callback(int c, void *d)
     struct parser_data *data = (struct parser_data *)d;
 
     tp_log_debug("%s: Enter\n", __func__);
-    
+
     switch (data->state) {
     case IDLE:
     case ERROR:

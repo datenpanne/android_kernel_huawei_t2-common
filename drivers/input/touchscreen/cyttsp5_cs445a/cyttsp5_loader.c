@@ -29,9 +29,6 @@
 #include <misc/app_info.h>
 #endif
 #endif /* CONFIG_HUAWEI_KERNEL */
-#ifdef CONFIG_HUAWEI_DSM
-#include <dsm/dsm_pub.h>
-#endif/*CONFIG_HUAWEI_DSM*/
 
 #define CYTTSP5_LOADER_NAME "cyttsp5_loader"
 #define CY_FW_MANUAL_UPGRADE_FILE_NAME "cyttsp5_fw_manual_upgrade"
@@ -76,13 +73,6 @@ static const u8 cyttsp5_security_key[] = {
 #define CY_POST_TT_CFG_CRC_MASK			0x2
 #define FILENAME_LEN_MAX 				64
 #define PANEL_NAME_LEN_MAX				16
-
-#ifdef CONFIG_HUAWEI_DSM
-extern struct tp_dsm_info g_tp_dsm_info;
-extern struct dsm_client *tp_cyp_dclient;
-extern ssize_t cyttsp5_dsm_record_basic_err_info(struct device *dev);
-extern int cyttsp5_tp_report_dsm_err(struct device *dev, int type, int err_numb);
-#endif/*CONFIG_HUAWEI_DSM*/
 
 struct cyttsp5_loader_data {
 	struct device *dev;
@@ -170,9 +160,9 @@ static int cyttsp5_check_firmware_version(struct device *dev,
 	fw_ver_img = ld->si->cydata.fw_ver_major << 8;
 	fw_ver_img += ld->si->cydata.fw_ver_minor;
 
-	tp_log_warning( "%s: img vers:0x%04X new vers:0x%04X\n", __func__,
+	tp_log_info( "%s: img vers:0x%04X new vers:0x%04X\n", __func__,
 			fw_ver_img, fw_ver_new);
-	tp_log_warning( "%s: Firmware Configuration Version in iC:0x%04X\n",
+	tp_log_info( "%s: Firmware Configuration Version in iC:0x%04X\n",
 			 __func__,ld->si->cydata.fw_ver_conf);
 
 	//check firmware version
@@ -223,7 +213,7 @@ static int cyttsp5_check_firmware_version(struct device *dev,
 
 	fw_revctrl_img = ld->si->cydata.revctrl;
 
-	tp_log_warning( "%s: img revctrl:0x%04X new revctrl:0x%04X\n",
+	tp_log_info( "%s: img revctrl:0x%04X new revctrl:0x%04X\n",
 			__func__, fw_revctrl_img, fw_revctrl_new);
 
 	if (FW_UPDATE_DIFF == cd->cpdata->fw_update_logic) {
@@ -241,7 +231,7 @@ static int cyttsp5_check_firmware_version(struct device *dev,
 			return -1;
 		}
 	}
-	tp_log_warning( "%s: Image has same version\n", __func__);
+	tp_log_info( "%s: Image has same version\n", __func__);
 
 	return 0;
 }
@@ -255,9 +245,9 @@ static u8 cyttsp5_get_panel_id(struct device *dev)
 
 /*****************************************************************
 Parameters    :  panel_name
-                 length    
-                 panel_id  
-Return        :    
+                 length
+                 panel_id
+Return        :
 Description   :  get panel name by panel id
 *****************************************************************/
 static unsigned int cyttsp5_get_panel_name(char *panel_name, unsigned int length,
@@ -276,7 +266,7 @@ static unsigned int cyttsp5_get_panel_name(char *panel_name, unsigned int length
 		break;
 	case FW_EELY:
 		strncpy(panel_name, "Eely", length);
-		break;		
+		break;
 	case FW_TRULY:
 		strncpy(panel_name, "Truly", length);
 		break;
@@ -354,7 +344,6 @@ static void cyttsp5_calibrate_idacs(struct work_struct *calibration_work)
 		tp_log_err("%s:suspend_scanning fail, rc:%d\n", __func__, rc);
 		goto release;
 	}
-
 	for (mode = 0; mode < 3; mode++) {
 		rc = cmd->nonhid_cmd->calibrate_idacs(dev, 0, mode, &status);
 		if (rc < 0) {
@@ -655,9 +644,6 @@ static int cyttsp5_upgrade_firmware(struct device *dev, const u8 *fw_img,
 
 	rc = cmd->request_exclusive(dev, CY_LDR_REQUEST_EXCLUSIVE_TIMEOUT);
 	if (rc < 0) {
-		#ifdef CONFIG_HUAWEI_DSM
-		g_tp_dsm_info.constraints_UPDATE_status = FWU_REQUEST_EXCLUSIVE_FAIL;
-		#endif/*CONFIG_HUAWEI_DSM*/
 		tp_log_err( "%s %d: request_exclusive fail, rc = %d\n",
 					__func__, __LINE__, rc);
 		goto exit;
@@ -715,6 +701,7 @@ exit:
 	}
 
 	pm_runtime_put_sync(dev);
+
 	return rc;
 }
 
@@ -839,26 +826,17 @@ static void _cyttsp5_firmware_cont(const struct firmware *fw, void *context)
 	u8 header_size = 0;
 
 	if (!fw) {
-		#ifdef CONFIG_HUAWEI_DSM
-		g_tp_dsm_info.constraints_UPDATE_status = FWU_FW_CONT_ERROR;
-		#endif/*CONFIG_HUAWEI_DSM*/
 		tp_log_err( "%s %d: Missing parameter\n", __func__, __LINE__);
 		goto cyttsp5_firmware_cont_exit;
 	}
 
 	if (!fw->data || !fw->size) {
-		#ifdef CONFIG_HUAWEI_DSM
-		g_tp_dsm_info.constraints_UPDATE_status = FWU_FW_CONT_ERROR;
-		#endif/*CONFIG_HUAWEI_DSM*/
 		tp_log_err( "%s: No firmware received\n", __func__);
 		goto cyttsp5_firmware_cont_release_exit;
 	}
 
 	header_size = fw->data[0];
 	if (header_size >= (fw->size + 1)) {
-		#ifdef CONFIG_HUAWEI_DSM
-		g_tp_dsm_info.constraints_UPDATE_status = FWU_FW_CONT_ERROR;
-		#endif/*CONFIG_HUAWEI_DSM*/
 		tp_log_err( "%s: Firmware format is invalid\n", __func__);
 		goto cyttsp5_firmware_cont_release_exit;
 	}
@@ -883,9 +861,6 @@ static int cyttsp5_check_firmware_version_builtin(struct device *dev,
 	int upgrade;
 
 	if (!ld->si) {
-		#ifdef CONFIG_HUAWEI_DSM
-		g_tp_dsm_info.constraints_UPDATE_status = FWU_GET_SYSINFO_FAIL;
-		#endif/*CONFIG_HUAWEI_DSM*/
 		if(cd->cpdata->new_fpc_flag == 1) {
 			cd->cpdata->firmware_broken = 1;
 		}
@@ -928,17 +903,11 @@ static void _cyttsp5_firmware_cont_builtin(const struct firmware *fw,
 	int upgrade;
 
 	if (!fw) {
-		#ifdef CONFIG_HUAWEI_DSM
-		g_tp_dsm_info.constraints_UPDATE_status = FWU_FW_CONT_BUILTIN_ERROR;
-		#endif/*CONFIG_HUAWEI_DSM*/
 		tp_log_info( "%s: No builtin firmware\n", __func__);
 		goto _cyttsp5_firmware_cont_builtin_exit;
 	}
 
 	if (!fw->data || !fw->size) {
-		#ifdef CONFIG_HUAWEI_DSM
-		g_tp_dsm_info.constraints_UPDATE_status = FWU_FW_CONT_BUILTIN_ERROR;
-		#endif/*CONFIG_HUAWEI_DSM*/
 		tp_log_err( "%s: Invalid builtin firmware\n", __func__);
 		goto _cyttsp5_firmware_cont_builtin_exit;
 	}
@@ -1010,6 +979,7 @@ static char *generate_firmware_filename(struct device *dev)
 #else /* CONFIG_HUAWEI_KERNEL */
 	u8 panel_id;
 #endif /* CONFIG_HUAWEI_KERNEL */
+
 	char *filename = NULL;
 
 	filename = kzalloc(FILENAME_LEN_MAX, GFP_KERNEL);
@@ -1072,9 +1042,6 @@ static int upgrade_firmware_from_builtin(struct device *dev)
 
 	filename = generate_firmware_filename(dev);
 	if (!filename) {
-		#ifdef CONFIG_HUAWEI_DSM
-		g_tp_dsm_info.constraints_UPDATE_status = FWU_GENERATE_FW_NAME_FAIL;
-		#endif/*CONFIG_HUAWEI_DSM*/
 		tp_log_err("%s %d:generate firmware filename fail\n", __func__, __LINE__);
 		return -ENOMEM;
 	}
@@ -1082,9 +1049,6 @@ static int upgrade_firmware_from_builtin(struct device *dev)
 #ifdef CONFIG_HUAWEI_KERNEL
 	retval = request_firmware(&fw_entry, filename, dev);
 	if (retval) {
-		#ifdef CONFIG_HUAWEI_DSM
-		g_tp_dsm_info.constraints_UPDATE_status = FWU_REQUEST_FW_FAIL;
-		#endif/*CONFIG_HUAWEI_DSM*/
 		tp_log_err("%s %d: Fail request firmware class file load, ret = %d\n",
 					__func__, __LINE__, retval);
 		goto exit;
@@ -1191,6 +1155,7 @@ static int cyttsp5_upgrade_ttconfig(struct device *dev,
 			tp_log_err( "%s: Fail put row=%d r=%d\n", __func__, i, rc);
 			break;
 		}
+
 		row_buf += row_size;
 	}
 
@@ -1394,6 +1359,7 @@ static struct cyttsp5_touch_config *cyttsp5_get_platform_ttconfig(
 	struct cyttsp5_loader_data *ld = cyttsp5_get_loader_data(dev);
 	struct cyttsp5_touch_config **ttconfigs;
 	struct cyttsp5_touch_config *ttconfig;
+
 	struct cyttsp5_platform_data *pdata = cyttsp5_get_platform_data(dev);
 	struct cyttsp5_core_platform_data *core_pdata = pdata->core_pdata;
 	u8 panel_id;
@@ -1422,6 +1388,7 @@ static struct cyttsp5_touch_config *cyttsp5_get_platform_ttconfig(
 		tp_log_info("%s %d:%s %s\n", __func__, __LINE__, ttconfig->product_name, product_name);
 		if (ttconfig->panel_id == panel_id
 			&& strcmp(product_name, ttconfig->product_name) == 0) {
+
 			/* TODO: Make debug message */
 			tp_log_info( "%s: Found matching ttconfig:%p with Panel ID: 0x%02X\n",
 				__func__, ttconfig, ttconfig->panel_id);
@@ -1447,6 +1414,7 @@ static int upgrade_ttconfig_from_platform(struct device *dev)
 	struct cyttsp5_touch_fw;
 	int rc = -ENOSYS;
 	int upgrade;
+
 
 	tp_log_info("%s %d:upgrade ttconfig from platform start.\n",
 				__func__, __LINE__);
@@ -1657,9 +1625,9 @@ static DEVICE_ATTR(config_loading, S_IRUSR | S_IWUSR,
 	cyttsp5_config_loading_show, cyttsp5_config_loading_store);
 #endif /* CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP5_MANUAL_TTCONFIG_UPGRADE */
 
-static void cyttsp5_set_app_info(struct device * dev) 
+static void cyttsp5_set_app_info(struct device * dev)
 {
-	
+
 	char touch_info[APP_INFO_VALUE_LENTH] = {0};
 	char panel_name[PANEL_NAME_LEN_MAX] = {0};
 	int panel_id = UNKNOW_PRODUCT_MODULE;
@@ -1667,7 +1635,7 @@ static void cyttsp5_set_app_info(struct device * dev)
 	struct cyttsp5_cydata *cydata = &cd->sysinfo.cydata;
 	struct cyttsp5_platform_data *pdata = cyttsp5_get_platform_data(dev);
 	struct cyttsp5_core_platform_data *core_pdata = pdata->core_pdata;
-	
+
 	/* get panel name */
 	panel_id = cyttsp5_get_panel_id(dev);
 	if(cd->cpdata->new_fpc_flag == 1) {
@@ -1717,6 +1685,7 @@ static void cyttsp5_fw_and_config_upgrade(
 	if (!ld->si) {
 		tp_log_err( "%s: Fail get sysinfo pointer from core\n",	__func__);
 	}
+
 #if !CYTTSP5_FW_UPGRADE
 	tp_log_info( "%s: No FW upgrade method selected!\n", __func__);
 #endif
@@ -1728,9 +1697,6 @@ static void cyttsp5_fw_and_config_upgrade(
 		tp_log_info("%s %d:update firmware from platform\n", __func__, __LINE__);
 	}
 #endif
-#ifdef CONFIG_HUAWEI_DSM
-	g_tp_dsm_info.constraints_UPDATE_status = TS_UPDATE_STATE_UNDEFINE;
-#endif/*CONFIG_HUAWEI_DSM*/
 #ifdef CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP5_BINARY_FW_UPGRADE
 	retVal = upgrade_firmware_from_builtin(dev);
 	if (!retVal) {
@@ -1739,11 +1705,6 @@ static void cyttsp5_fw_and_config_upgrade(
 		tp_log_warning("%s %d:firmware haven't upgraded, rc = %d\n", __func__, __LINE__, retVal);
 	}
 #endif
-#ifdef CONFIG_HUAWEI_DSM
-	if(TS_UPDATE_STATE_UNDEFINE != g_tp_dsm_info.constraints_UPDATE_status){
-		cyttsp5_tp_report_dsm_err(dev, DSM_TP_FW_ERROR_NO, retVal);
-	}
-#endif/*CONFIG_HUAWEI_DSM*/
 
 	/* when firmware in ic missing, ld->si will be NULL, this issue will lead to ttconfig upgrade fail,
 	   to fix this issue, after upgrade bin, we should request system info again */
@@ -2004,6 +1965,7 @@ static int __init cyttsp5_loader_init(void)
 			tp_log_err("%s: core_id %d is empty\n",	__func__, i + 1);
 			return -EINVAL;
 		}
+
 		for (j = i+1; j < num_core_ids; j++) {
 			if (!strcmp(core_ids[i], core_ids[j])) {
 				tp_log_err("%s: core_ids %d and %d are same\n",
@@ -2050,6 +2012,7 @@ fail_unregister_devices:
 		tp_log_info("%s: Unregistering loader module for core_id: %s\n",
 			__func__, core_ids[i]);
 	}
+
 
 	return rc;
 }

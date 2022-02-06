@@ -40,14 +40,14 @@
 #include "csv.h"
 #include "cm_cp_test.h"
 #include <linux/proc_fs.h>
- 
+
  struct cyttsp5_panel_info {
     u8 *product_name;
     u8 *chip_name;
     u8 panel_id;
     u8 *id2str;
  };
- 
+
  static struct cyttsp5_panel_info hw_panel_info[] = {
     {"x1s","tma568", 0,"ofilm" },
     {"x1s","tma568", 1,"lens"    },
@@ -122,7 +122,7 @@ int cyttsp5_send_command(struct device *dev,char *buf)
 #if 0
     struct cyttsp5_core_commands *cmd;
     //tp_log_info("%s Buf %s.\n",__func__, buf);
-	
+
     cmd = cyttsp5_get_commands();
     if (!cmd) {
         rc = -EINVAL;
@@ -189,7 +189,7 @@ static int cyttsp5_get_tp_config_file(struct device *dev, char *parameter_file, 
         tp_log_err("%s Failed to cyttsp5_get_commands.\n",__func__);
         goto out;
     };
- 
+
     error = cmd->nonhid_cmd->get_panel_id(dev, 1, &panel_id);
     if (error < 0) {
         error = -EINVAL;
@@ -224,7 +224,7 @@ static int cyttsp5_get_tp_config_file(struct device *dev, char *parameter_file, 
             }
         }
     }
- 
+
     strncat(config_file,"_",strlen("_"));
     strncat(config_file,"input_format.csv",strlen("input_format.csv"));
 
@@ -235,7 +235,7 @@ out:
 }
 
 
-     
+
 int cyttsp5_cm_cp_test(struct seq_file *m, void *v)
 {
     int error = 0;
@@ -246,10 +246,10 @@ int cyttsp5_cm_cp_test(struct seq_file *m, void *v)
     char config_filename[CONFIG_NAME_LENGTH] = {0};
     struct file *config_file = NULL;
     struct file *parameter_file = NULL;
-    bool run_cm_test = true, run_cp_test = true;    
+    bool run_cm_test = true, run_cp_test = true;
     bool cm_test_pass = 1;
-    bool cp_test_pass = 1; 
-    int vdda = 0;    
+    bool cp_test_pass = 1;
+    int vdda = 0;
     int cp_ret=0;
     int cm_ret=0;
     mm_segment_t fs;
@@ -353,5 +353,3 @@ void cyttsp5_procfs_create(void)
     proc_create("touchscreen/cm_cp_test", 0444, NULL, &cyttsp5_cm_cp_proc_fops);
     return;
 }
-
-

@@ -149,7 +149,6 @@ static void mdss_dsi_set_reg(struct mdss_dsi_ctrl_pdata *ctrl, int off,
 	MIPI_OUTP(ctrl->ctrl_base + off, data);
 }
 
-/* TE Signal instable lead to mdp-fence timeout or blank screen and can't wake up*/
 void mdss_dsi_clk_req(struct mdss_dsi_ctrl_pdata *ctrl, int enable)
 {
 	MDSS_XLOG(ctrl->ndx, enable, ctrl->mdp_busy, current->pid);
@@ -157,10 +156,8 @@ void mdss_dsi_clk_req(struct mdss_dsi_ctrl_pdata *ctrl, int enable)
 		/* need wait before disable */
 		mutex_lock(&ctrl->cmd_mutex);
 		if (mdss_dsi_cmd_mdp_busy(ctrl))
-		{
 			pr_warn("%s: wait for mdp to be idle timedout\n",
 				__func__);
-		}
 		mutex_unlock(&ctrl->cmd_mutex);
 	}
 
@@ -532,7 +529,6 @@ static void mdss_dsi_wait_clk_lane_to_stop(struct mdss_dsi_ctrl_pdata *ctrl)
 	mdss_dsi_cfg_lane_ctrl(ctrl, BIT(20), 0);
 }
 
-/* TE Signal instable lead to mdp-fence timeout or blank screen and can't wake up*/
 static void mdss_dsi_stop_hs_clk_lane(struct mdss_dsi_ctrl_pdata *ctrl);
 
 /*
@@ -542,7 +538,6 @@ static void mdss_dsi_stop_hs_clk_lane(struct mdss_dsi_ctrl_pdata *ctrl);
  */
 static void mdss_dsi_start_hs_clk_lane(struct mdss_dsi_ctrl_pdata *ctrl)
 {
-/* TE Signal instable lead to mdp-fence timeout or blank screen and can't wake up*/
 	/* make sure clk lane is stopped */
 	mdss_dsi_stop_hs_clk_lane(ctrl);
 
@@ -576,7 +571,6 @@ static void mdss_dsi_start_hs_clk_lane(struct mdss_dsi_ctrl_pdata *ctrl)
  * had been started. Therefore more than 1 vsync polling time is needed.
  * Use 50ms timeout to cover 30 FPS case.
  */
-/* TE Signal instable lead to mdp-fence timeout or blank screen and can't wake up*/
 static void mdss_dsi_stop_hs_clk_lane(struct mdss_dsi_ctrl_pdata *ctrl)
 {
 	u32 fifo = 0;
@@ -640,7 +634,6 @@ static void mdss_dsi_cmd_start_hs_clk_lane(struct mdss_dsi_ctrl_pdata *ctrl)
 	mdss_dsi_start_hs_clk_lane(ctrl);
 }
 
-/* TE Signal instable lead to mdp-fence timeout or blank screen and can't wake up*/
 static void mdss_dsi_cmd_stop_hs_clk_lane(struct mdss_dsi_ctrl_pdata *ctrl)
 {
 	struct mdss_dsi_ctrl_pdata *mctrl = NULL;
@@ -656,6 +649,7 @@ static void mdss_dsi_cmd_stop_hs_clk_lane(struct mdss_dsi_ctrl_pdata *ctrl)
 
 	mdss_dsi_stop_hs_clk_lane(ctrl);
 }
+
 static void mdss_dsi_lp_rx_ctl_phy_reset(struct mdss_dsi_ctrl_pdata *ctrl)
 {
 	u32 data0;
@@ -725,6 +719,7 @@ static void mdss_dsi_lp_rx_ctl_phy_reset(struct mdss_dsi_ctrl_pdata *ctrl)
 
 	return;
 }
+
 static void mdss_dsi_ctl_phy_reset(struct mdss_dsi_ctrl_pdata *ctrl, u32 event)
 {
 	u32 data0, data1, mask = 0, data_lane_en = 0;
@@ -1866,7 +1861,6 @@ static int mdss_dsi_cmd_dma_tx(struct mdss_dsi_ctrl_pdata *ctrl,
 	#endif
 	}
 
-
 	INIT_COMPLETION(ctrl->dma_comp);
 
 	if (ctrl->panel_mode == DSI_VIDEO_MODE)
@@ -2153,7 +2147,6 @@ void mdss_dsi_cmd_mdp_start(struct mdss_dsi_ctrl_pdata *ctrl)
 	spin_unlock_irqrestore(&ctrl->mdp_lock, flag);
 }
 
-/* TE Signal instable lead to mdp-fence timeout or blank screen and can't wake up*/
 static int mdss_dsi_mdp_busy_tout_check(struct mdss_dsi_ctrl_pdata *ctrl)
 {
 	unsigned long flag;
@@ -2198,8 +2191,6 @@ static int mdss_dsi_mdp_busy_tout_check(struct mdss_dsi_ctrl_pdata *ctrl)
 	return tout;
 }
 
-/* TE Signal instable lead to mdp-fence timeout or blank screen and can't wake up*/
-/* report mdp busy dsm error */
 int mdss_dsi_cmd_mdp_busy(struct mdss_dsi_ctrl_pdata *ctrl)
 {
 	unsigned long flags;
@@ -2307,7 +2298,7 @@ int mdss_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp)
 
 	MDSS_XLOG(ctrl->ndx, from_mdp, ctrl->mdp_busy, current->pid,
 							XLOG_FUNC_ENTRY);
-/* TE Signal instable lead to mdp-fence timeout or blank screen and can't wake up*/
+
 	if (req == NULL)
 		goto need_lock;
 	/* make sure dsi_cmd_mdp is idle */
@@ -2410,7 +2401,6 @@ need_lock:
 			mdss_dsi_cmd_mdp_start(ctrl);
 
 		mutex_unlock(&ctrl->cmd_mutex);
-/* TE Signal instable lead to mdp-fence timeout or blank screen and can't wake up*/
 	} else {	/* from dcs send */
 		if (ctrl->cmd_clk_ln_recovery_en &&
 				ctrl->panel_mode == DSI_CMD_MODE &&
@@ -2528,7 +2518,7 @@ static int dsi_event_thread(void *data)
 			}
 			mutex_unlock(&dsi_mtx);
 		}
-/* TE Signal instable lead to mdp-fence timeout or blank screen and can't wake up*/
+
 		if (todo & DSI_EV_MDP_BUSY_RELEASE) {
 			pr_debug("%s: Handling MDP_BUSY_RELEASE event\n",
 							__func__);

@@ -207,7 +207,7 @@ static void field_read_callback(void *s, size_t len, void *d)
 
     if (!strcmp(field, ""))
         return;
-    
+
     if (data->state == ERROR)
         return;
 
