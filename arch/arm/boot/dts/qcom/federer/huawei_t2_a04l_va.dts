@@ -31,3 +31,9 @@
 		product_name = "msm8939_T2-A04L";
 	};
 };
+
+&soc {
+	qcom,rmtfs_sharedmem@8e580000 {
+		reg = <0x86700000 0x160000>;
+    };
+};
